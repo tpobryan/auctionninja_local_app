@@ -520,7 +520,7 @@ def save():
             f"Images stored in: {final_dir.name}"
         )
 
-    return redirect(url_for("main.index"))
+    return redirect(url_for("items.edit_saved_item", lot_number=csv_lot_number))
 
 @main_bp.route("/uploads/<temp_id>/<filename>")
 def uploaded_file(temp_id: str, filename: str):
