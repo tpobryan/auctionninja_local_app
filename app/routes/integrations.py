@@ -64,10 +64,10 @@ def connect_integration(platform_id):
     auth_result = integration.authenticate(request.args, session_data=session_data)
     
     if "redirect_url" in auth_result:
-        # Save PKCE codes for the callback
+        # Save session codes for the callback
         if "pkce" in auth_result:
-            session[f"{platform_id}_oauth_state"] = auth_result["pkce"]["state"]
-            session[f"{platform_id}_oauth_verifier"] = auth_result["pkce"]["verifier"]
+            session[f"{platform_id}_oauth_state"] = auth_result["pkce"].get("state")
+            session[f"{platform_id}_oauth_verifier"] = auth_result["pkce"].get("verifier")
         return redirect(auth_result["redirect_url"])
         
     if "error" in auth_result:
