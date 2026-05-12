@@ -227,7 +227,7 @@ class EtsyIntegration(PlatformIntegration):
 
         # 2. Create or Update Draft
         remote_id = item_data.get("remote_id")
-        if not remote_id:
+        if not remote_id or str(remote_id).lower() == "none":
             current_app.logger.info("[Etsy] Creating draft for lot %s", lot_number)
             draft_res = self.create_draft_listing(access_token, shop_id, item_data)
             if not draft_res.get("success"):
@@ -347,7 +347,8 @@ class EtsyIntegration(PlatformIntegration):
         response = requests.post(url, headers=headers, data=payload)
         if response.status_code in [200, 201]:
             result = response.json()
-            return {"success": True, "listing_id": str(result.get("listing_id"))}
+            listing_id = result.get("listing_id")
+            return {"success": True, "listing_id": str(listing_id) if listing_id else None}
         else:
             error_msg = response.text
             try:
