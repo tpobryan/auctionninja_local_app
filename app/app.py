@@ -89,8 +89,11 @@ def protect_csrf():
         return None
     if request.endpoint == "healthz" or request.path.startswith("/api/"):
         return None
-    if validate_csrf_token(request.form.get("csrf_token", "")):
+        
+    token = request.form.get("csrf_token", "") or request.headers.get("X-CSRFToken", "")
+    if validate_csrf_token(token):
         return None
+        
     abort(400, description="Missing or invalid CSRF token.")
 
 
