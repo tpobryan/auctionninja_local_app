@@ -359,6 +359,7 @@
       {% endwith %}
 
       <div class="filter-row">
+        <a class="filter-pill secondary" href="{{ url_for('main.index') }}" style="background: #e5e7eb; border-color: #d1d5db;">← Back to Upload</a>
         <a class="filter-pill {% if current_filter == 'active' %}active{% endif %}" href="{{ url_for('items.manage_items', status='active') }}">Active ({{ filter_counts['active'] }})</a>
         <a class="filter-pill {% if current_filter == 'ready' %}active{% endif %}" href="{{ url_for('items.manage_items', status='ready') }}">Ready ({{ filter_counts['ready'] }})</a>
         <a class="filter-pill {% if current_filter == 'published' %}active{% endif %}" href="{{ url_for('items.manage_items', status='published') }}">Published ({{ filter_counts['published'] }})</a>
@@ -468,6 +469,7 @@
 
         <div class="footer-actions">
           <div class="inline-actions">
+            <a class="button-link secondary" href="{{ url_for('main.index') }}">Back to Upload</a>
             <a class="button-link secondary" href="{{ url_for('main.dashboard') }}">Inventory Dashboard</a>
             <a class="button-link secondary" href="{{ url_for('auctions.auctions_overview') }}">Auctions</a>
             <a class="button-link secondary" href="{{ url_for('exports.export_history') }}">Export History</a>

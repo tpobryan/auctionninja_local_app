@@ -345,7 +345,10 @@
     {% endwith %}
 
     <div class="topbar">
-      <a class="back-link" href="{{ url_for('items.manage_items', status=current_filter) }}">← Back to inventory</a>
+      <div style="display: flex; gap: 15px; align-items: center;">
+        <a class="back-link" href="{{ url_for('items.manage_items', status=current_filter) }}">← Back to inventory</a>
+        <a class="back-link" href="{{ url_for('main.index') }}" style="color: var(--muted); font-size: 0.9rem;">Back to Upload</a>
+      </div>
       <div style="display: flex; gap: 10px; align-items: center;">
         <span class="status-pill">{{ item['status'] }}</span>
         <div style="font-weight: 600; color: var(--accent);">Lot #{{ item['lot_number'] }}</div>
@@ -663,8 +666,9 @@
               </div>
             </div>
             <div class="button-row" style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border); display: flex; gap: 12px;">
-              <button type="submit" style="flex: 1;">Save Changes</button>
+              <button type="submit" style="flex: 2;">Save Changes</button>
               <a class="button-link secondary" href="{{ url_for('items.manage_items', status=current_filter) }}" style="flex: 1; text-align: center;">Cancel</a>
+              <a class="button-link secondary" href="{{ url_for('main.index') }}" style="flex: 1; text-align: center; background: #f3f4f6;">Back to Upload</a>
             </div>
           </form>
         </div>
