@@ -661,7 +661,7 @@
           formData.append("lot_number", "{{ item['lot_number'] }}");
           formData.append("csrf_token", document.querySelector('input[name="csrf_token"]').value);
           
-          fetch("{{ url_for('items.save_edited_photo') }}", { method: "POST", body: formData })
+          fetch("{{ url_for('items.edit_saved_photo') }}", { method: "POST", body: formData })
             .then(r => r.json())
             .then(data => {
               if (data.success) {
