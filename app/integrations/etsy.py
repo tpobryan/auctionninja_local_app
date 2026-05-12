@@ -266,9 +266,9 @@ class EtsyIntegration(PlatformIntegration):
         """Pre-flight check for required Etsy fields."""
         required = [
             ("Title", "Title is required"),
-            ("Etsy Taxonomy ID", "Etsy Taxonomy ID is required"),
-            ("Etsy Shipping Profile ID", "Etsy Shipping Profile ID is required"),
-            ("Price", "A valid price greater than 0.20 is required for Etsy"),
+            ("Etsy Taxonomy ID", "Etsy Taxonomy ID is required (Please select a category)"),
+            ("Etsy Shipping Profile ID", "Please select an Etsy Shipping Profile"),
+            ("Price", "A valid price greater than $0.20 is required for Etsy"),
         ]
         
         for field, msg in required:

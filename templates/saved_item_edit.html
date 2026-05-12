@@ -662,7 +662,10 @@
                 </div>
               </div>
             </div>
-
+            <div class="button-row" style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border); display: flex; gap: 12px;">
+              <button type="submit" style="flex: 1;">Save Changes</button>
+              <a class="button-link secondary" href="{{ url_for('items.manage_items', status=current_filter) }}" style="flex: 1; text-align: center;">Cancel</a>
+            </div>
           </form>
         </div>
       </div>
