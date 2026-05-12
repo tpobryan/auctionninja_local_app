@@ -540,301 +540,274 @@
       <button type="button" id="btnCancelEdit" class="secondary">Cancel</button>
       <button type="button" id="btnSaveEdit">Save</button>
     </div>
+    <div id="aiOptionsModal" class="editor-modal" style="padding: 40px 20px; overflow-y: auto; justify-content: flex-start; z-index: 200;">
+      <div class="card" style="max-width: 600px; width: 100%; margin: 0 auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <h2 style="margin: 0;">AI Identification Options</h2>
+          <button type="button" onclick="document.getElementById('aiOptionsModal').classList.remove('active')" style="background: none; color: var(--muted); padding: 0; font-size: 1.5rem; border:0; cursor:pointer;">&times;</button>
+        </div>
+        <p class="sub">Pick an option to populate the form fields below.</p>
+        <div id="aiOptionsContainer"></div>
+        <div class="button-row" style="justify-content: flex-end; margin-top: 20px;">
+          <button type="button" class="secondary" onclick="document.getElementById('aiOptionsModal').classList.remove('active')">Cancel</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
   <script>
-    let cropper = null;
-    let editingFilename = "";
-    let isEnhanced = false;
-    let enhancedImageUrl = null;
-    let originalImageUrl = null;
-    const editorModal = document.getElementById("editorModal");
-    const editorImage = document.getElementById("editorImage");
+    document.addEventListener('DOMContentLoaded', () => {
+      let cropper = null;
+      let editingFilename = "";
+      let isEnhanced = false;
+      let enhancedImageUrl = null;
+      let originalImageUrl = null;
+      const editorModal = document.getElementById("editorModal");
+      const editorImage = document.getElementById("editorImage");
 
-    document.querySelectorAll(".edit-photo-btn").forEach(btn => {
-      btn.addEventListener("click", () => {
-        editingFilename = btn.getAttribute("data-filename");
-        isEnhanced = false;
-        enhancedImageUrl = null;
-        originalImageUrl = btn.getAttribute("data-src") + "?t=" + new Date().getTime();
-        
-        const btnToggleEnhance = document.getElementById("btnToggleEnhance");
-        btnToggleEnhance.style.background = "";
-        btnToggleEnhance.style.color = "";
-        btnToggleEnhance.textContent = "✨ Enhance";
-        
-        editorImage.src = originalImageUrl;
-        editorModal.classList.add("active");
-        if (cropper) cropper.destroy();
-        cropper = new Cropper(editorImage, { viewMode: 2, checkOrientation: false, autoCrop: false });
-      });
-    });
-
-    document.getElementById("btnCancelEdit").addEventListener("click", () => {
-      editorModal.classList.remove("active");
-      if (cropper) cropper.destroy();
-      cropper = null;
-      if (enhancedImageUrl) {
-        URL.revokeObjectURL(enhancedImageUrl);
-        enhancedImageUrl = null;
-      }
-    });
-
-    document.getElementById("btnRotateLeft").addEventListener("click", () => {
-      if (cropper) cropper.rotate(-90);
-    });
-
-    document.getElementById("btnRotateRight").addEventListener("click", () => {
-      if (cropper) cropper.rotate(90);
-    });
-
-    document.getElementById("btnToggleEnhance").addEventListener("click", () => {
-      if (!cropper) return;
-      const btnToggleEnhance = document.getElementById("btnToggleEnhance");
-      
-      if (isEnhanced) {
-        isEnhanced = false;
-        const cropData = cropper.getData();
-        cropper.replace(originalImageUrl);
-        cropper.options.ready = () => cropper.setData(cropData);
-        btnToggleEnhance.style.background = "";
-        btnToggleEnhance.style.color = "";
-        btnToggleEnhance.textContent = "✨ Enhance";
-      } else {
-        if (enhancedImageUrl) {
-          isEnhanced = true;
-          const cropData = cropper.getData();
-          cropper.replace(enhancedImageUrl);
-          cropper.options.ready = () => cropper.setData(cropData);
-          btnToggleEnhance.style.background = "#10b981";
-          btnToggleEnhance.style.color = "white";
-        } else {
-          btnToggleEnhance.textContent = "Loading...";
-          btnToggleEnhance.disabled = true;
+      document.querySelectorAll(".edit-photo-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          editingFilename = btn.getAttribute("data-filename");
+          isEnhanced = false;
+          enhancedImageUrl = null;
+          originalImageUrl = btn.getAttribute("data-src") + "?t=" + new Date().getTime();
           
-          const img = new Image();
-          img.crossOrigin = "anonymous";
-          img.onload = () => {
-            const canvas = document.createElement("canvas");
-            let w = img.naturalWidth;
-            let h = img.naturalHeight;
-            if (Math.max(w, h) > 1800) {
-               const scale = 1800 / Math.max(w, h);
-               w *= scale;
-               h *= scale;
-            }
-            canvas.width = w;
-            canvas.height = h;
-            const ctx = canvas.getContext("2d");
-            ctx.drawImage(img, 0, 0, w, h);
-            const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
-            
-            const formData = new FormData();
-            formData.append("image_data", dataUrl);
-            const csrfInput = document.querySelector('input[name="csrf_token"]');
-            if (csrfInput) formData.append("csrf_token", csrfInput.value);
-
-            fetch("/api/auto_enhance_preview", {
-              method: "POST", body: formData, credentials: "same-origin"
-            })
-            .then(res => res.json())
-            .then(data => {
-              if (data.success) {
-                fetch(data.image_data)
-                  .then(res => res.blob())
-                  .then(blob => {
-                     enhancedImageUrl = URL.createObjectURL(blob);
-                     isEnhanced = true;
-                     const cropData = cropper.getData();
-                     cropper.replace(enhancedImageUrl);
-                     cropper.options.ready = () => cropper.setData(cropData);
-                     btnToggleEnhance.style.background = "#10b981";
-                     btnToggleEnhance.style.color = "white";
-                  });
-              } else {
-                alert("Error enhancing photo: " + data.error);
-              }
-            })
-            .catch(err => alert("Network error during enhancement."))
-            .finally(() => {
-              btnToggleEnhance.disabled = false;
-              btnToggleEnhance.textContent = "✨ Enhance";
-            });
-          };
-          img.src = originalImageUrl;
-        }
-      }
-    });
-
-    document.getElementById("btnSaveEdit").addEventListener("click", () => {
-      if (!cropper) return;
-      const canvas = cropper.getCroppedCanvas({
-        maxWidth: 1800,
-        maxHeight: 1800
-      });
-      if (!canvas) return;
-
-      const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
-      const formData = new FormData();
-      formData.append("lot_number", "{{ item['lot_number'] }}");
-      formData.append("filename", editingFilename);
-      formData.append("image_data", dataUrl);
-      formData.append("auto_enhance", "false"); // We no longer need the backend to apply it, it's baked into the canvas
-      formData.append("csrf_token", document.querySelector('input[name="csrf_token"]').value);
-
-      document.getElementById("btnSaveEdit").disabled = true;
-      document.getElementById("btnToggleEnhance").disabled = true;
-      document.getElementById("btnSaveEdit").textContent = "Saving...";
-
-      fetch("{{ url_for('items.edit_saved_photo') }}", {
-        method: "POST",
-        body: formData,
-        credentials: "same-origin"
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          window.location.reload();
-        } else {
-          alert("Error saving photo: " + data.error);
-          document.getElementById("btnSaveEdit").disabled = false;
-          document.getElementById("btnToggleEnhance").disabled = false;
-          document.getElementById("btnSaveEdit").textContent = "Save";
-        }
-      })
-      .catch(err => {
-        alert("Network error.");
-        document.getElementById("btnSaveEdit").disabled = false;
-        document.getElementById("btnToggleEnhance").disabled = false;
-        document.getElementById("btnSaveEdit").textContent = "Save";
-    });
-
-    // Re-analyze logic
-    const btnReanalyze = document.getElementById('btnReanalyze');
-    const aiOptionsModal = document.getElementById('aiOptionsModal');
-    const aiOptionsContainer = document.getElementById('aiOptionsContainer');
-
-    if (btnReanalyze) {
-      btnReanalyze.addEventListener('click', async () => {
-        const originalText = btnReanalyze.textContent;
-        btnReanalyze.textContent = '⏳ Analyzing...';
-        btnReanalyze.disabled = true;
-
-        try {
-          const formData = new FormData();
-          formData.append('csrf_token', document.querySelector('input[name="csrf_token"]').value);
-          formData.append('strategy', document.getElementById('ListingStrategy').value);
-
-          const res = await fetch(`/api/items/{{ item['lot_number'] }}/reanalyze`, {
-            method: 'POST',
-            body: formData
-          });
-          const data = await res.json();
-
-          if (data.success) {
-            renderAiOptions(data.options);
-            aiOptionsModal.classList.add('active');
-          } else {
-            alert('Re-analysis failed: ' + data.error);
-          }
-        } catch (err) {
-          console.error(err);
-          alert('Network error during re-analysis.');
-        } finally {
-          btnReanalyze.textContent = originalText;
-          btnReanalyze.disabled = false;
-        }
-      });
-    }
-
-    function renderAiOptions(options) {
-      aiOptionsContainer.innerHTML = options.map(opt => `
-        <div class="card" style="padding: 12px; margin-bottom: 12px; border: 1px solid #e2e8f0; background: #f8fafc;">
-          <h3 style="margin-top:0;">Option ${opt.rank}</h3>
-          <div style="font-size: 0.9rem; margin-bottom: 8px;"><strong>Title:</strong> ${opt.title}</div>
-          <div style="font-size: 0.85rem; color: var(--muted); margin-bottom: 12px;">${opt.identification}</div>
-          <button type="button" class="small-button use-ai-option-btn" data-opt='${JSON.stringify(opt).replace(/'/g, "&apos;")}' style="padding: 6px 12px; font-size: 0.8rem;">Use This Option</button>
-        </div>
-      `).join('');
-
-      document.querySelectorAll('.use-ai-option-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-           const opt = JSON.parse(btn.getAttribute('data-opt'));
-           applyAiOption(opt);
+          const btnToggleEnhance = document.getElementById("btnToggleEnhance");
+          btnToggleEnhance.style.background = "";
+          btnToggleEnhance.style.color = "";
+          btnToggleEnhance.textContent = "✨ Enhance";
+          
+          editorImage.src = originalImageUrl;
+          editorModal.classList.add("active");
+          if (cropper) cropper.destroy();
+          cropper = new Cropper(editorImage, { viewMode: 2, checkOrientation: false, autoCrop: false });
         });
       });
-    }
 
-    window.applyAiOption = function(opt) {
-      if (document.getElementById('Title')) document.getElementById('Title').value = opt.title || '';
-      if (document.getElementById('Description')) document.getElementById('Description').value = opt.description || '';
-      if (document.getElementById('Condition Summary')) document.getElementById('Condition Summary').value = opt.condition_summary || '';
-      if (document.getElementById('Keywords')) document.getElementById('Keywords').value = opt.keywords || '';
-      if (document.getElementById('Category')) document.getElementById('Category').value = opt.category || 'Other';
-
-      const pd = opt.platform_data || {};
-      const ebay = pd.ebay || {};
-      if (document.getElementById('eBay SEO Title')) document.getElementById('eBay SEO Title').value = ebay.seo_title || '';
-      if (document.getElementById('eBay Category ID')) document.getElementById('eBay Category ID').value = ebay.category_id || '';
-      
-      const etsy = pd.etsy || {};
-      if (document.getElementById('Price')) document.getElementById('Price').value = (etsy.suggested_price || 0).toFixed(2);
-      if (document.getElementById('Quantity')) document.getElementById('Quantity').value = etsy.suggested_quantity || 1;
-      if (document.getElementById('Etsy Taxonomy ID')) document.getElementById('Etsy Taxonomy ID').value = etsy.taxonomy_id || '';
-      if (document.getElementById('Etsy Tags')) document.getElementById('Etsy Tags').value = (etsy.tags || []).join(', ');
-      if (document.getElementById('Etsy Materials')) document.getElementById('Etsy Materials').value = (etsy.materials || []).join(', ');
-
-      aiOptionsModal.classList.remove('active');
-      
-      if (pd.ebay || pd.etsy) {
-        const strategySelect = document.getElementById('ListingStrategy');
-        if (strategySelect) {
-            strategySelect.value = 'retail';
-            if (typeof toggleStrategyFields === 'function') toggleStrategyFields();
+      document.getElementById("btnCancelEdit").addEventListener("click", () => {
+        editorModal.classList.remove("active");
+        if (cropper) cropper.destroy();
+        cropper = null;
+        if (enhancedImageUrl) {
+          URL.revokeObjectURL(enhancedImageUrl);
+          enhancedImageUrl = null;
         }
-      }
-      
-      alert('AI option applied! Review the fields and click Save Changes.');
-    };
+      });
 
-    // Platform Publishing logic
-    document.querySelectorAll('.publish-btn').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const platform = btn.getAttribute('data-platform');
-        const originalText = btn.textContent;
+      document.getElementById("btnRotateLeft").addEventListener("click", () => {
+        if (cropper) cropper.rotate(-90);
+      });
+
+      document.getElementById("btnRotateRight").addEventListener("click", () => {
+        if (cropper) cropper.rotate(90);
+      });
+
+      document.getElementById("btnToggleEnhance").addEventListener("click", () => {
+        if (!cropper) return;
+        const btnToggleEnhance = document.getElementById("btnToggleEnhance");
         
-        btn.textContent = '⏳ Publishing...';
-        btn.disabled = true;
-        
-        try {
-          const res = await fetch(`/items/{{ item['lot_number'] }}/publish/${platform}`, {
-            method: 'POST',
-            headers: {
-              'X-CSRFToken': document.querySelector('input[name="csrf_token"]').value
-            }
-          });
-          const data = await res.json();
+        if (isEnhanced) {
+          isEnhanced = false;
+          const cropData = cropper.getData();
+          cropper.replace(originalImageUrl);
+          cropper.options.ready = () => cropper.setData(cropData);
+          btnToggleEnhance.style.background = "";
+          btnToggleEnhance.style.color = "";
+          btnToggleEnhance.textContent = "✨ Enhance";
+        } else {
+          isEnhanced = true;
+          const cropData = cropper.getData();
+          btnToggleEnhance.textContent = "⏳ Enhancing...";
+          btnToggleEnhance.disabled = true;
           
-          if (data.success) {
-            alert(`Successfully published to ${platform}!`);
-            window.location.reload();
-          } else {
-            let msg = data.error || 'Unknown error';
-            if (data.partial) {
-              msg = "Partial success: Draft created but some images failed to upload. \n\nError: " + msg;
-            }
-            alert(`Failed to publish to ${platform}: ${msg}`);
-            window.location.reload(); // Reload to show the error state in UI
-          }
-        } catch (err) {
-          console.error(err);
-          alert('Network error during publishing.');
-          btn.textContent = originalText;
-          btn.disabled = false;
+          cropper.getCroppedCanvas().toBlob(blob => {
+            const formData = new FormData();
+            formData.append("photo", blob, editingFilename);
+            formData.append("csrf_token", document.querySelector('input[name="csrf_token"]').value);
+            
+            fetch("/api/enhance", { method: "POST", body: formData })
+              .then(r => r.blob())
+              .then(enhancedBlob => {
+                if (enhancedImageUrl) URL.revokeObjectURL(enhancedImageUrl);
+                enhancedImageUrl = URL.createObjectURL(enhancedBlob);
+                cropper.replace(enhancedImageUrl);
+                cropper.options.ready = () => cropper.setData(cropData);
+                btnToggleEnhance.style.background = "#10b981";
+                btnToggleEnhance.style.color = "white";
+                btnToggleEnhance.textContent = "✨ Enhanced";
+                btnToggleEnhance.disabled = false;
+              })
+              .catch(err => {
+                console.error(err);
+                alert("Enhancement failed.");
+                btnToggleEnhance.textContent = "✨ Enhance";
+                btnToggleEnhance.disabled = false;
+                isEnhanced = false;
+              });
+          }, "image/jpeg", 0.95);
         }
+      });
+
+      document.getElementById("btnSaveEdit").addEventListener("click", () => {
+        if (!cropper) return;
+        document.getElementById("btnSaveEdit").disabled = true;
+        document.getElementById("btnToggleEnhance").disabled = true;
+        document.getElementById("btnSaveEdit").textContent = "⏳ Saving...";
+        
+        cropper.getCroppedCanvas().toBlob(blob => {
+          const formData = new FormData();
+          formData.append("photo", blob, editingFilename);
+          formData.append("lot_number", "{{ item['lot_number'] }}");
+          formData.append("csrf_token", document.querySelector('input[name="csrf_token"]').value);
+          
+          fetch("{{ url_for('items.save_edited_photo') }}", { method: "POST", body: formData })
+            .then(r => r.json())
+            .then(data => {
+              if (data.success) {
+                window.location.reload();
+              } else {
+                alert("Error saving photo: " + data.error);
+                document.getElementById("btnSaveEdit").disabled = false;
+                document.getElementById("btnToggleEnhance").disabled = false;
+                document.getElementById("btnSaveEdit").textContent = "Save";
+              }
+            })
+            .catch(err => {
+              alert("Network error.");
+              document.getElementById("btnSaveEdit").disabled = false;
+              document.getElementById("btnToggleEnhance").disabled = false;
+              document.getElementById("btnSaveEdit").textContent = "Save";
+          });
+        }, "image/jpeg", 0.95);
+      });
+
+      // Re-analyze logic
+      const btnReanalyze = document.getElementById('btnReanalyze');
+      const aiOptionsModal = document.getElementById('aiOptionsModal');
+      const aiOptionsContainer = document.getElementById('aiOptionsContainer');
+
+      if (btnReanalyze) {
+        btnReanalyze.addEventListener('click', async () => {
+          const originalText = btnReanalyze.textContent;
+          btnReanalyze.textContent = '⏳ Analyzing...';
+          btnReanalyze.disabled = true;
+
+          try {
+            const formData = new FormData();
+            formData.append('csrf_token', document.querySelector('input[name="csrf_token"]').value);
+            formData.append('strategy', document.getElementById('ListingStrategy').value);
+
+            const res = await fetch(`/api/items/{{ item['lot_number'] }}/reanalyze`, {
+              method: 'POST',
+              body: formData
+            });
+            const data = await res.json();
+
+            if (data.success) {
+              renderAiOptions(data.options);
+              aiOptionsModal.classList.add('active');
+            } else {
+              alert('Re-analysis failed: ' + data.error);
+            }
+          } catch (err) {
+            console.error(err);
+            alert('Network error during re-analysis.');
+          } finally {
+            btnReanalyze.textContent = originalText;
+            btnReanalyze.disabled = false;
+          }
+        });
+      }
+
+      function renderAiOptions(options) {
+        aiOptionsContainer.innerHTML = options.map(opt => `
+          <div class="card" style="padding: 12px; margin-bottom: 12px; border: 1px solid #e2e8f0; background: #f8fafc;">
+            <h3 style="margin-top:0;">Option ${opt.rank}</h3>
+            <div style="font-size: 0.9rem; margin-bottom: 8px;"><strong>Title:</strong> ${opt.title}</div>
+            <div style="font-size: 0.85rem; color: var(--muted); margin-bottom: 12px;">${opt.identification}</div>
+            <button type="button" class="small-button use-ai-option-btn" data-opt='${JSON.stringify(opt).replace(/'/g, "&apos;")}' style="padding: 6px 12px; font-size: 0.8rem;">Use This Option</button>
+          </div>
+        `).join('');
+
+        document.querySelectorAll('.use-ai-option-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+             const opt = JSON.parse(btn.getAttribute('data-opt'));
+             applyAiOption(opt);
+          });
+        });
+      }
+
+      function applyAiOption(opt) {
+        if (document.getElementById('Title')) document.getElementById('Title').value = opt.title || '';
+        if (document.getElementById('Description')) document.getElementById('Description').value = opt.description || '';
+        if (document.getElementById('Condition Summary')) document.getElementById('Condition Summary').value = opt.condition_summary || '';
+        if (document.getElementById('Keywords')) document.getElementById('Keywords').value = opt.keywords || '';
+        if (document.getElementById('Category')) document.getElementById('Category').value = opt.category || 'Other';
+
+        const pd = opt.platform_data || {};
+        const ebay = pd.ebay || {};
+        if (document.getElementById('eBay SEO Title')) document.getElementById('eBay SEO Title').value = ebay.seo_title || '';
+        if (document.getElementById('eBay Category ID')) document.getElementById('eBay Category ID').value = ebay.category_id || '';
+        
+        const etsy = pd.etsy || {};
+        if (document.getElementById('Price')) document.getElementById('Price').value = (etsy.suggested_price || 0).toFixed(2);
+        if (document.getElementById('Quantity')) document.getElementById('Quantity').value = etsy.suggested_quantity || 1;
+        if (document.getElementById('Etsy Taxonomy ID')) document.getElementById('Etsy Taxonomy ID').value = etsy.taxonomy_id || '';
+        if (document.getElementById('Etsy Tags')) document.getElementById('Etsy Tags').value = (etsy.tags || []).join(', ');
+        if (document.getElementById('Etsy Materials')) document.getElementById('Etsy Materials').value = (etsy.materials || []).join(', ');
+
+        aiOptionsModal.classList.remove('active');
+        
+        if (pd.ebay || pd.etsy) {
+          const strategySelect = document.getElementById('ListingStrategy');
+          if (strategySelect) {
+              strategySelect.value = 'retail';
+              if (typeof toggleStrategyFields === 'function') toggleStrategyFields();
+          }
+        }
+        
+        alert('AI option applied! Review the fields and click Save Changes.');
+      };
+
+      // Platform Publishing logic
+      document.querySelectorAll('.publish-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const platform = btn.getAttribute('data-platform');
+          const originalText = btn.textContent;
+          
+          btn.textContent = '⏳ Publishing...';
+          btn.disabled = true;
+          
+          try {
+            const res = await fetch(`/items/{{ item['lot_number'] }}/publish/${platform}`, {
+              method: 'POST',
+              headers: {
+                'X-CSRFToken': document.querySelector('input[name="csrf_token"]').value
+              }
+            });
+            const data = await res.json();
+            
+            if (data.success) {
+              alert(`Successfully published to ${platform}!`);
+              window.location.reload();
+            } else {
+              let msg = data.error || 'Unknown error';
+              if (data.partial) {
+                msg = "Partial success: Draft created but some images failed to upload. \n\nError: " + msg;
+              }
+              alert(`Failed to publish to ${platform}: ${msg}`);
+              window.location.reload(); // Reload to show the error state in UI
+            }
+          } catch (err) {
+            console.error(err);
+            alert('Network error during publishing.');
+            btn.textContent = originalText;
+            btn.disabled = false;
+          }
+        });
       });
     });
   </script>
-<div id="aiOptionsModal" class="editor-modal" style="padding: 40px 20px; overflow-y: auto; justify-content: flex-start; z-index: 200;"><div class="card" style="max-width: 600px; width: 100%; margin: 0 auto;"><div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;"><h2 style="margin: 0;">AI Identification Options</h2><button type="button" onclick="document.getElementById('aiOptionsModal').classList.remove('active')" style="background: none; color: var(--muted); padding: 0; font-size: 1.5rem; border:0; cursor:pointer;">&times;</button></div><p class="sub">Pick an option to populate the form fields below.</p><div id="aiOptionsContainer"></div><div class="button-row" style="justify-content: flex-end; margin-top: 20px;"><button type="button" class="secondary" onclick="document.getElementById('aiOptionsModal').classList.remove('active')">Cancel</button></div></div></div></body>
+</body>
 </html>
