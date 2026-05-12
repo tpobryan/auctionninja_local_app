@@ -138,7 +138,7 @@ def update_saved_item(lot_number: int):
         flash(f"Updated lot {lot_number}. Status changed to needs_update so it can be re-exported.")
     else:
         flash(f"Updated lot {lot_number}.")
-    return redirect(url_for("items.manage_items", status=current_filter))
+    return redirect(url_for("items.edit_saved_item", lot_number=lot_number, status=current_filter))
 
 @items_bp.route("/items/<int:lot_number>/remove", methods=["POST"])
 def remove_saved_item(lot_number: int):
