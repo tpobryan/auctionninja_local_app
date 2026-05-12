@@ -1461,7 +1461,9 @@ def fetch_saved_item(lot_number: int) -> dict[str, str] | None:
                 created_at,
                 updated_at,
                 published_at,
-                last_export_batch
+                last_export_batch,
+                listing_strategy,
+                platform_data
             FROM auction_items
             WHERE lot_number = {placeholder} 
               AND auction_id = {placeholder}
@@ -1505,11 +1507,17 @@ def saved_item_fields_from_form(form: dict[str, str]) -> dict[str, str]:
             "etsy_taxonomy_id": form.get("Etsy Taxonomy ID", ""),
             "etsy_tags": form.get("Etsy Tags", ""),
             "etsy_materials": form.get("Etsy Materials", ""),
+            "etsy_shipping_profile_id": form.get("Etsy Shipping Profile ID", ""),
+            "etsy_who_made": form.get("Etsy Who Made", "someone_else"),
+            "etsy_when_made": form.get("Etsy When Made", "2020_2026"),
+            "etsy_is_supply": form.get("Etsy Is Supply", "no"),
             "etsy_price": form.get("Price", "0.00"),
             "etsy_quantity": form.get("Quantity", "1"),
+            "etsy_weight": form.get("Item Weight", ""),
+            "etsy_weight_unit": form.get("Item Weight Unit", "lb"),
             "publish_to_ebay": form.get("Publish to eBay") == "yes",
             "publish_to_etsy": form.get("Publish to Etsy") == "yes",
-        }) if form.get("Listing Strategy") == "retail" else "",
+        })
     }
 
 

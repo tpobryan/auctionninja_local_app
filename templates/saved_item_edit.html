@@ -509,6 +509,31 @@
                 <textarea id="Keywords" name="Keywords" rows="2">{{ form['Keywords'] }}</textarea>
               </div>
 
+              <div class="field-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;">
+                <div class="field">
+                  <label for="Price">Suggested Price ($)</label>
+                  <input type="number" step="0.01" id="Price" name="Price" value="{{ form.get('Price', '0.00') }}">
+                </div>
+                <div class="field">
+                  <label for="Quantity">Quantity</label>
+                  <input type="number" id="Quantity" name="Quantity" value="{{ form.get('Quantity', '1') }}">
+                </div>
+              </div>
+
+              <div class="grid-2" style="margin-top: 12px;">
+                <div class="field">
+                  <label for="Item Weight">Shipping Weight</label>
+                  <input type="text" id="Item Weight" name="Item Weight" value="{{ form.get('Item Weight', '') }}" placeholder="e.g. 1.5">
+                </div>
+                <div class="field">
+                  <label for="Item Weight Unit">Weight Unit</label>
+                  <select id="Item Weight Unit" name="Item Weight Unit">
+                    <option value="oz" {% if form.get('Item Weight Unit') == 'oz' %}selected{% endif %}>Ounces (oz)</option>
+                    <option value="lb" {% if form.get('Item Weight Unit', 'lb') == 'lb' %}selected{% endif %}>Pounds (lb)</option>
+                  </select>
+                </div>
+              </div>
+
               <div class="field">
                 <label for="Item Notes">Private Internal Notes</label>
                 <textarea id="Item Notes" name="Item Notes" rows="3">{{ form['Item Notes'] }}</textarea>
@@ -579,6 +604,20 @@
                 </label>
 
                 <div class="field">
+                  <label for="Etsy Shipping Profile ID">Shipping Profile</label>
+                  <select id="Etsy Shipping Profile ID" name="Etsy Shipping Profile ID">
+                    <option value="0">-- Select a Profile --</option>
+                    {% for profile in etsy_shipping_profiles %}
+                      <option value="{{ profile.shipping_profile_id }}" {% if form.get('Etsy Shipping Profile ID') == profile.shipping_profile_id|string %}selected{% endif %}>
+                        {{ profile.title }}
+                      </option>
+                    {% else %}
+                      <option disabled>No profiles found. Try reconnecting Etsy in Admin.</option>
+                    {% endfor %}
+                  </select>
+                </div>
+
+                <div class="field">
                   <label for="Etsy Taxonomy ID">Etsy Taxonomy ID</label>
                   <input type="text" id="Etsy Taxonomy ID" name="Etsy Taxonomy ID" value="{{ form.get('Etsy Taxonomy ID', '') }}" placeholder="e.g. 1234">
                 </div>
@@ -591,6 +630,35 @@
                 <div class="field">
                   <label for="Etsy Materials">Etsy Materials (Comma separated)</label>
                   <textarea id="Etsy Materials" name="Etsy Materials" rows="2">{{ form.get('Etsy Materials', '') }}</textarea>
+                </div>
+
+                <div class="grid-2">
+                  <div class="field">
+                    <label for="Etsy Who Made">Who made it?</label>
+                    <select id="Etsy Who Made" name="Etsy Who Made">
+                      <option value="i_did" {% if form.get('Etsy Who Made') == 'i_did' %}selected{% endif %}>I did</option>
+                      <option value="collective" {% if form.get('Etsy Who Made') == 'collective' %}selected{% endif %}>A collective</option>
+                      <option value="someone_else" {% if form.get('Etsy Who Made') == 'someone_else' %}selected{% endif %}>Someone else</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="Etsy When Made">When?</label>
+                    <select id="Etsy When Made" name="Etsy When Made">
+                      <option value="made_to_order" {% if form.get('Etsy When Made') == 'made_to_order' %}selected{% endif %}>Made to order</option>
+                      <option value="2020_2026" {% if form.get('Etsy When Made') == '2020_2026' %}selected{% endif %}>2020 - 2026</option>
+                      <option value="2010_2019" {% if form.get('Etsy When Made') == '2010_2019' %}selected{% endif %}>2010 - 2019</option>
+                      <option value="2000_2009" {% if form.get('Etsy When Made') == '2000_2009' %}selected{% endif %}>2000 - 2009</option>
+                      <option value="before_2006" {% if form.get('Etsy When Made') == 'before_2006' %}selected{% endif %}>Vintage (Before 2006)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="field">
+                  <label for="Etsy Is Supply">Is this a supply/tool?</label>
+                  <select id="Etsy Is Supply" name="Etsy Is Supply">
+                    <option value="no" {% if form.get('Etsy Is Supply') == 'no' %}selected{% endif %}>No (Finished Item)</option>
+                    <option value="yes" {% if form.get('Etsy Is Supply') == 'yes' %}selected{% endif %}>Yes (Supply/Tool)</option>
+                  </select>
                 </div>
               </div>
             </div>

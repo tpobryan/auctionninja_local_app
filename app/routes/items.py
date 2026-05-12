@@ -22,7 +22,9 @@ from ..database import (
     record_ftp_upload,
     initialize_platform_status,
     fetch_platform_statuses_for_lots,
+    get_platform_credentials,
 )
+from ..integrations.publisher import PLATFORMS
 from ..utils import (
     UPLOADS_DIR,
     DEFAULT_CATEGORIES,
@@ -59,6 +61,18 @@ def edit_saved_item(lot_number: int):
     # Fetch platform statuses
     platform_statuses = fetch_platform_statuses_for_lots([lot_number]).get(lot_number, [])
     
+    # Fetch Etsy shipping profiles
+    etsy_shipping_profiles = []
+    try:
+        creds = get_platform_credentials("etsy")
+        if creds:
+            shop_id = creds.get('settings', {}).get('shop_id')
+            etsy = PLATFORMS.get("etsy")
+            if etsy:
+                etsy_shipping_profiles = etsy.get_shipping_profiles(creds["access_token"], shop_id)
+    except Exception as exc:
+        current_app.logger.warning("[Items] Failed to fetch Etsy shipping profiles: %s", exc)
+
     return render_template(
         "saved_item_edit.html",
         item=item,
@@ -68,6 +82,7 @@ def edit_saved_item(lot_number: int):
         image_url_prefix=f"/uploads/{image_folder}/" if image_folder else "",
         current_filter=normalize_manage_filter(request.args.get("status", "active")),
         platform_statuses=platform_statuses,
+        etsy_shipping_profiles=etsy_shipping_profiles,
     )
 
 @items_bp.route("/items/<int:lot_number>/update", methods=["POST"])
@@ -103,6 +118,12 @@ def update_saved_item(lot_number: int):
         "Etsy Materials": request.form.get("Etsy Materials", ""),
         "Publish to Etsy": request.form.get("Publish to Etsy", ""),
         "Publish to eBay": request.form.get("Publish to eBay", ""),
+        "Etsy Shipping Profile ID": request.form.get("Etsy Shipping Profile ID", ""),
+        "Etsy Who Made": request.form.get("Etsy Who Made", ""),
+        "Etsy When Made": request.form.get("Etsy When Made", ""),
+        "Etsy Is Supply": request.form.get("Etsy Is Supply", ""),
+        "Item Weight": request.form.get("Item Weight", ""),
+        "Item Weight Unit": request.form.get("Item Weight Unit", ""),
     }
 
     validation_errors = validate_save_form(form)
