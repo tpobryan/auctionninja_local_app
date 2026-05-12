@@ -357,7 +357,7 @@ def form_from_saved_item(record: dict[str, str]) -> dict[str, str]:
         "Etsy Who Made": platform_data.get("etsy_who_made", "someone_else"),
         "Etsy When Made": platform_data.get("etsy_when_made", "2020_2026"),
         "Etsy Is Supply": platform_data.get("etsy_is_supply", "no"),
-        "Price": platform_data.get("etsy_price", "0.00"),
+        "Price": platform_data.get("etsy_price", ""),
         "Quantity": platform_data.get("etsy_quantity", "1"),
         "Item Weight": platform_data.get("etsy_weight", ""),
         "Item Weight Unit": platform_data.get("etsy_weight_unit", "lb"),
