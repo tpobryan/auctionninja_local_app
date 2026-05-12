@@ -20,6 +20,8 @@ from ..database import (
     current_auction_number_for_upload,
     reserve_next_auction_photo_index,
     record_ftp_upload,
+    initialize_platform_status,
+    fetch_platform_statuses_for_lots,
 )
 from ..utils import (
     UPLOADS_DIR,
@@ -53,6 +55,10 @@ def edit_saved_item(lot_number: int):
 
     image_folder = item.get("image_folder", "")
     saved_files = load_saved_files_for_temp_id(image_folder)
+    
+    # Fetch platform statuses
+    platform_statuses = fetch_platform_statuses_for_lots([lot_number]).get(lot_number, [])
+    
     return render_template(
         "saved_item_edit.html",
         item=item,
@@ -61,6 +67,7 @@ def edit_saved_item(lot_number: int):
         image_files=[p.name for p in saved_files],
         image_url_prefix=f"/uploads/{image_folder}/" if image_folder else "",
         current_filter=normalize_manage_filter(request.args.get("status", "active")),
+        platform_statuses=platform_statuses,
     )
 
 @items_bp.route("/items/<int:lot_number>/update", methods=["POST"])
@@ -116,10 +123,16 @@ def update_saved_item(lot_number: int):
 
     new_status = update_saved_item_record(lot_number, form)
     
-    # Trigger publishing if strategy is retail
+    # Initialize publishing if strategy is retail
     if form.get("Listing Strategy") == "retail":
-        from ..integrations.publisher import process_platform_publishing
-        process_platform_publishing(lot_number, form, item.get("image_folder", ""))
+        platforms = []
+        if form.get("Publish to Etsy") == "yes":
+            platforms.append("etsy")
+        if form.get("Publish to eBay") == "yes":
+            platforms.append("ebay")
+            
+        if platforms:
+            initialize_platform_status(lot_number, platforms)
 
     if new_status == ITEM_STATUS_NEEDS_UPDATE:
         flash(f"Updated lot {lot_number}. Status changed to needs_update so it can be re-exported.")
@@ -272,3 +285,25 @@ def reanalyze_item(lot_number: int):
     except Exception as exc:
         current_app.logger.exception("AI re-analysis failed")
         return {"success": False, "error": str(exc)}, 500
+
+@items_bp.route("/items/<int:lot_number>/publish/<platform_id>", methods=["POST"])
+def publish_item_to_platform(lot_number: int, platform_id: str):
+    from ..integrations.publisher import publish_to_platform
+    
+    item = fetch_saved_item(lot_number)
+    if not item:
+        return {"success": False, "error": "Lot not found"}, 404
+        
+    # Get current status to see if it's already published or has a remote_id
+    statuses = fetch_platform_statuses_for_lots([lot_number]).get(lot_number, [])
+    platform_status = next((s for s in statuses if s["platform_id"] == platform_id), None)
+    
+    # We need the form data to publish
+    from ..utils import form_from_saved_item
+    form = form_from_saved_item(item)
+    
+    image_folder = item.get("image_folder", "")
+    
+    res = publish_to_platform(platform_id, lot_number, form, image_folder, existing_status=platform_status)
+    
+    return res

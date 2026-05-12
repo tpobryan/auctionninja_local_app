@@ -183,12 +183,24 @@ def ensure_item_store_ready() -> None:
                     platform_id TEXT NOT NULL,
                     status TEXT NOT NULL,
                     remote_id TEXT,
+                    remote_url TEXT,
+                    last_error TEXT,
+                    last_error_code TEXT,
+                    stage TEXT,
+                    attempt_count INTEGER DEFAULT 0,
+                    last_attempt_at TEXT,
                     published_at TEXT,
                     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     UNIQUE(lot_number, platform_id)
                 )
                 """
             )
+            _ensure_sqlite_column(cursor, "item_platform_status", "remote_url", "TEXT")
+            _ensure_sqlite_column(cursor, "item_platform_status", "last_error", "TEXT")
+            _ensure_sqlite_column(cursor, "item_platform_status", "last_error_code", "TEXT")
+            _ensure_sqlite_column(cursor, "item_platform_status", "stage", "TEXT")
+            _ensure_sqlite_column(cursor, "item_platform_status", "attempt_count", "INTEGER DEFAULT 0")
+            _ensure_sqlite_column(cursor, "item_platform_status", "last_attempt_at", "TEXT")
             cursor.execute(
                 """
                 CREATE TABLE IF NOT EXISTS integrations (
@@ -314,12 +326,24 @@ def ensure_item_store_ready() -> None:
                     platform_id VARCHAR(64) NOT NULL,
                     status VARCHAR(64) NOT NULL,
                     remote_id VARCHAR(255) NULL,
+                    remote_url TEXT NULL,
+                    last_error TEXT NULL,
+                    last_error_code VARCHAR(100) NULL,
+                    stage VARCHAR(100) NULL,
+                    attempt_count INT DEFAULT 0,
+                    last_attempt_at TIMESTAMP NULL DEFAULT NULL,
                     published_at TIMESTAMP NULL DEFAULT NULL,
                     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                     UNIQUE KEY unique_item_platform (lot_number, platform_id)
                 )
                 """
             )
+            _ensure_mysql_column(cursor, "item_platform_status", "remote_url", "TEXT NULL")
+            _ensure_mysql_column(cursor, "item_platform_status", "last_error", "TEXT NULL")
+            _ensure_mysql_column(cursor, "item_platform_status", "last_error_code", "VARCHAR(100) NULL")
+            _ensure_mysql_column(cursor, "item_platform_status", "stage", "VARCHAR(100) NULL")
+            _ensure_mysql_column(cursor, "item_platform_status", "attempt_count", "INT DEFAULT 0")
+            _ensure_mysql_column(cursor, "item_platform_status", "last_attempt_at", "TIMESTAMP NULL DEFAULT NULL")
             cursor.execute(
                 """
                 CREATE TABLE IF NOT EXISTS integrations (
@@ -1324,7 +1348,7 @@ def fetch_platform_statuses_for_lots(lot_numbers: list[int]) -> dict[int, list[d
         placeholders = ", ".join(["?"] * len(lot_numbers)) if dialect == "sqlite" else ", ".join(["%s"] * len(lot_numbers))
         cursor.execute(
             f"""
-            SELECT lot_number, platform_id, status, remote_id, updated_at
+            SELECT lot_number, platform_id, status, remote_id, remote_url, last_error, last_error_code, stage, attempt_count, last_attempt_at, published_at, updated_at
             FROM item_platform_status
             WHERE lot_number IN ({placeholders})
             """,
@@ -1342,7 +1366,14 @@ def fetch_platform_statuses_for_lots(lot_numbers: list[int]) -> dict[int, list[d
                 "platform_id": str(_extract_row_value(row, "platform_id", 1, "")),
                 "status": str(_extract_row_value(row, "status", 2, "")),
                 "remote_id": str(_extract_row_value(row, "remote_id", 3, "")),
-                "updated_at": str(_extract_row_value(row, "updated_at", 4, "")),
+                "remote_url": str(_extract_row_value(row, "remote_url", 4, "")),
+                "last_error": str(_extract_row_value(row, "last_error", 5, "")),
+                "last_error_code": str(_extract_row_value(row, "last_error_code", 6, "")),
+                "stage": str(_extract_row_value(row, "stage", 7, "")),
+                "attempt_count": int(_extract_row_value(row, "attempt_count", 8, 0)),
+                "last_attempt_at": str(_extract_row_value(row, "last_attempt_at", 9, "")),
+                "published_at": str(_extract_row_value(row, "published_at", 10, "")),
+                "updated_at": str(_extract_row_value(row, "updated_at", 11, "")),
             }
             result[lot_num].append(status_info)
         return result
@@ -2401,8 +2432,11 @@ def get_platform_credentials(platform_id: str) -> dict[str, Any] | None:
         connection.close()
 
 
-def update_platform_status(lot_number: int, platform_id: str, status: str, remote_id: str = None) -> bool:
-    """Updates the publishing status of an item on a specific platform."""
+def initialize_platform_status(lot_number: int, platform_ids: list[str]) -> bool:
+    """Initializes status records for platforms if they don't exist, or resets them if they do."""
+    if not platform_ids:
+        return True
+        
     ensure_item_store_ready()
     connection, dialect = connect_item_store()
     if not connection:
@@ -2412,24 +2446,101 @@ def update_platform_status(lot_number: int, platform_id: str, status: str, remot
         cursor = connection.cursor()
         placeholder = "?" if dialect == "sqlite" else "%s"
         
+        for platform_id in platform_ids:
+            # Check if exists
+            cursor.execute(
+                f"SELECT id FROM item_platform_status WHERE lot_number = {placeholder} AND platform_id = {placeholder}",
+                (lot_number, platform_id)
+            )
+            if cursor.fetchone():
+                # Reset if not already published
+                cursor.execute(
+                    f"""
+                    UPDATE item_platform_status 
+                    SET status = 'ready_to_publish', stage = 'idle', updated_at = CURRENT_TIMESTAMP
+                    WHERE lot_number = {placeholder} AND platform_id = {placeholder} AND status != 'published'
+                    """,
+                    (lot_number, platform_id)
+                )
+            else:
+                # Insert new
+                if dialect == "sqlite":
+                    cursor.execute(
+                        """
+                        INSERT INTO item_platform_status (lot_number, platform_id, status, stage, updated_at)
+                        VALUES (?, ?, 'ready_to_publish', 'idle', CURRENT_TIMESTAMP)
+                        """,
+                        (lot_number, platform_id)
+                    )
+                else:
+                    cursor.execute(
+                        """
+                        INSERT INTO item_platform_status (lot_number, platform_id, status, stage)
+                        VALUES (%s, %s, 'ready_to_publish', 'idle')
+                        """,
+                        (lot_number, platform_id)
+                    )
+        connection.commit()
+        return True
+    except Exception as exc:
+        print(f"[Database] Error initializing platform status for lot {lot_number}: {exc}")
+        return False
+    finally:
+        connection.close()
+
+
+def update_platform_status(
+    lot_number: int, 
+    platform_id: str, 
+    status: str, 
+    remote_id: str = None,
+    remote_url: str = None,
+    last_error: str = None,
+    last_error_code: str = None,
+    stage: str = None,
+    increment_attempt: bool = False
+) -> bool:
+    """Updates the publishing status of an item with detailed fields."""
+    ensure_item_store_ready()
+    connection, dialect = connect_item_store()
+    if not connection:
+        return False
+
+    try:
+        cursor = connection.cursor()
+        placeholder = "?" if dialect == "sqlite" else "%s"
+        
+        updates = ["status = ?", "updated_at = CURRENT_TIMESTAMP"]
+        params = [status]
+        
         if remote_id:
-            cursor.execute(
-                f"""
-                UPDATE item_platform_status 
-                SET status = {placeholder}, remote_id = {placeholder}, published_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
-                WHERE lot_number = {placeholder} AND platform_id = {placeholder}
-                """,
-                (status, remote_id, lot_number, platform_id)
-            )
-        else:
-            cursor.execute(
-                f"""
-                UPDATE item_platform_status 
-                SET status = {placeholder}, updated_at = CURRENT_TIMESTAMP
-                WHERE lot_number = {placeholder} AND platform_id = {placeholder}
-                """,
-                (status, lot_number, platform_id)
-            )
+            updates.append("remote_id = ?")
+            params.append(remote_id)
+        if remote_url:
+            updates.append("remote_url = ?")
+            params.append(remote_url)
+        if last_error is not None:
+            updates.append("last_error = ?")
+            params.append(last_error)
+        if last_error_code is not None:
+            updates.append("last_error_code = ?")
+            params.append(last_error_code)
+        if stage:
+            updates.append("stage = ?")
+            params.append(stage)
+        if status == "published":
+            updates.append("published_at = CURRENT_TIMESTAMP")
+        if increment_attempt:
+            updates.append("attempt_count = attempt_count + 1")
+            updates.append("last_attempt_at = CURRENT_TIMESTAMP")
+            
+        sql = f"UPDATE item_platform_status SET {', '.join(updates)} WHERE lot_number = ? AND platform_id = ?"
+        params.extend([lot_number, platform_id])
+        
+        if dialect == "mysql":
+            sql = sql.replace("?", "%s")
+            
+        cursor.execute(sql, tuple(params))
         connection.commit()
         return True
     except Exception as exc:

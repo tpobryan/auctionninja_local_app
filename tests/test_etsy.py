@@ -75,9 +75,10 @@ def test_etsy_create_draft_listing(mock_get, mock_post, etsy, mock_app):
         "Etsy Tags": "Jewelry, Gift",
     }
     
-    listing_id = etsy.create_draft_listing("fake-token", "fake-shop", item_data)
+    res = etsy.create_draft_listing("fake-token", "fake-shop", item_data)
     
-    assert listing_id == "12345"
+    assert res["success"] is True
+    assert res["listing_id"] == "12345"
     
     # Verify the payload sent to Etsy
     args, kwargs = mock_post.call_args

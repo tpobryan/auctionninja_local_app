@@ -209,42 +209,88 @@ class EtsyIntegration(PlatformIntegration):
             current_app.logger.warning("[Etsy] Failed to fetch shipping profiles: %d - %s", response.status_code, response.text)
             return []
 
-    def publish_listing(self, lot_number: int, item_data: Dict[str, Any]) -> str:
+    def publish_listing(self, lot_number: int, item_data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Publishes the listing to Etsy.
-        Expects item_data to contain 'access_token', 'shop_id', and 'platform_data' or raw fields.
+        Publishes the listing to Etsy in stages.
+        Returns a dict with success status and any error info.
         """
         access_token = item_data.get("access_token")
         shop_id = item_data.get("shop_id")
         
         if not access_token or not shop_id:
-            current_app.logger.warning("[Etsy] Missing credentials for publishing")
-            return ""
+            return {"success": False, "error": "Missing Etsy credentials", "stage": "validating"}
 
-        # 1. Create the draft listing
-        listing_id = self.create_draft_listing(access_token, shop_id, item_data)
-        if not listing_id:
-            return ""
+        # 1. Validation
+        validation = self.validate_listing_data(item_data)
+        if not validation["success"]:
+            return validation
 
-        # 2. Upload images
+        # 2. Create or Update Draft
+        remote_id = item_data.get("remote_id")
+        if not remote_id:
+            current_app.logger.info("[Etsy] Creating draft for lot %s", lot_number)
+            draft_res = self.create_draft_listing(access_token, shop_id, item_data)
+            if not draft_res.get("success"):
+                return draft_res
+            remote_id = draft_res["listing_id"]
+        else:
+            current_app.logger.info("[Etsy] Using existing draft %s for lot %s", remote_id, lot_number)
+
+        # 3. Upload Images
         image_paths = item_data.get("image_paths", [])
+        # Get existing images to avoid duplicates if retrying? 
+        # For now, just try to upload all. Etsy API v3 might overwrite or add.
+        
+        failed_images = []
         for i, img_path in enumerate(image_paths):
-            success = self.upload_listing_image(access_token, shop_id, listing_id, img_path, i + 1)
+            success = self.upload_listing_image(access_token, shop_id, remote_id, img_path, i + 1)
             if not success:
-                current_app.logger.warning("[Etsy] Failed to upload image %d: %s", i + 1, img_path)
+                failed_images.append(os.path.basename(img_path))
+        
+        if failed_images:
+            return {
+                "success": False, 
+                "partial": True,
+                "listing_id": remote_id,
+                "error": f"Failed to upload {len(failed_images)} images: {', '.join(failed_images)}",
+                "stage": "uploading_images"
+            }
 
-        return f"etsy_{listing_id}"
+        return {
+            "success": True, 
+            "listing_id": remote_id, 
+            "remote_url": f"https://www.etsy.com/your/shops/me/listing-editor/{remote_id}"
+        }
 
-    def create_draft_listing(self, access_token: str, shop_id: str, data: Dict[str, Any]) -> str:
-        """Creates a draft listing and returns the listing_id."""
+    def validate_listing_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Pre-flight check for required Etsy fields."""
+        required = [
+            ("Title", "Title is required"),
+            ("Price", "Price is required"),
+            ("Etsy Taxonomy ID", "Etsy Taxonomy ID is required"),
+            ("Etsy Shipping Profile ID", "Etsy Shipping Profile ID is required"),
+        ]
+        
+        for field, msg in required:
+            val = data.get(field)
+            if not val or str(val).strip() in ["", "0", "0.00"]:
+                return {"success": False, "error": msg, "stage": "validating"}
+        
+        try:
+            float(data.get("Price", 0))
+        except ValueError:
+            return {"success": False, "error": "Price must be a number", "stage": "validating"}
+            
+        return {"success": True}
+
+    def create_draft_listing(self, access_token: str, shop_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Creates a draft listing and returns detail dict."""
         headers = self._get_headers(access_token)
         url = f"{self.api_base}/application/shops/{shop_id}/listings"
         
         # Map our internal data to Etsy fields
-        # Note: who_made, when_made, what_it_is are required
         platform_data = data.get("platform_data", {})
         if isinstance(platform_data, str):
-            import json
             try:
                 platform_data = json.loads(platform_data)
             except:
@@ -252,42 +298,40 @@ class EtsyIntegration(PlatformIntegration):
 
         etsy_data = platform_data.get("etsy", {})
         
-        payload = {
-            "quantity": int(data.get("Quantity", 1)),
-            "title": data.get("Title", "Untitled Listing")[:140],
-            "description": data.get("Description", ""),
-            "price": float(data.get("Price", 0.0)),
-            "who_made": data.get("Etsy Who Made") or etsy_data.get("who_made", "someone_else"),
-            "when_made": data.get("Etsy When Made") or etsy_data.get("when_made", "2020_2026"),
-            "taxonomy_id": int(data.get("Etsy Taxonomy ID") or etsy_data.get("taxonomy_id", 1)), # Default to 1 if missing
-            "is_supply": (data.get("Etsy Is Supply") == "yes") or etsy_data.get("is_supply", False),
-            "shipping_profile_id": int(data.get("Etsy Shipping Profile ID") or etsy_data.get("shipping_profile_id", 0)),
-            "state": "draft",
-            "item_weight": float(data.get("Item Weight") or 1.0),
-            "item_weight_unit": data.get("Item Weight Unit", "lb"),
-            "item_length": float(data.get("Dimensions - Length") or 1.0),
-            "item_width": float(data.get("Dimensions - Depth") or 1.0),
-            "item_height": float(data.get("Dimensions - Height") or 1.0),
-            "item_dimensions_unit": "in"
-        }
+        try:
+            payload = {
+                "quantity": int(data.get("Quantity", 1)),
+                "title": data.get("Title", "Untitled Listing")[:140],
+                "description": data.get("Description", ""),
+                "price": float(data.get("Price", 0.0)),
+                "who_made": data.get("Etsy Who Made") or etsy_data.get("who_made", "someone_else"),
+                "when_made": data.get("Etsy When Made") or etsy_data.get("when_made", "2020_2026"),
+                "taxonomy_id": int(data.get("Etsy Taxonomy ID") or etsy_data.get("taxonomy_id", 1)),
+                "is_supply": (data.get("Etsy Is Supply") == "yes") or etsy_data.get("is_supply", False),
+                "shipping_profile_id": int(data.get("Etsy Shipping Profile ID") or etsy_data.get("shipping_profile_id", 0)),
+                "state": "draft",
+                "item_weight": float(data.get("Item Weight") or 1.0),
+                "item_weight_unit": data.get("Item Weight Unit", "lb"),
+                "item_length": float(data.get("Dimensions - Length") or 1.0),
+                "item_width": float(data.get("Dimensions - Depth") or 1.0),
+                "item_height": float(data.get("Dimensions - Height") or 1.0),
+                "item_dimensions_unit": "in"
+            }
+        except Exception as e:
+            return {"success": False, "error": f"Data mapping error: {str(e)}", "stage": "validating"}
         
-        # Try to get a default readiness_state_id if not provided
-        # Readiness states are required for physical items in v3
+        # Readiness states
         readiness_url = f"{self.api_base}/application/shops/{shop_id}/readiness-state-definitions"
         read_res = requests.get(readiness_url, headers=headers)
         if read_res.status_code == 200:
             read_data = read_res.json()
             if read_data.get("count", 0) > 0:
-                # Use the first one found as a safe default
                 payload["readiness_state_id"] = read_data["results"][0]["readiness_state_id"]
-                current_app.logger.info("[Etsy] Using readiness_state_id: %s", payload["readiness_state_id"])
         
         if "readiness_state_id" not in payload:
-            # Fallback to the one we saw in diagnostics if fetch failed
             payload["readiness_state_id"] = 1404242012765
-            current_app.logger.info("[Etsy] Using fallback readiness_state_id: 1404242012765")
 
-        # Materials and Tags (optional but recommended)
+        # Materials and Tags
         materials = data.get("Etsy Materials") or etsy_data.get("materials", [])
         if isinstance(materials, str):
             materials = [m.strip() for m in materials.split(",") if m.strip()]
@@ -303,10 +347,16 @@ class EtsyIntegration(PlatformIntegration):
         response = requests.post(url, headers=headers, data=payload)
         if response.status_code in [200, 201]:
             result = response.json()
-            return str(result.get("listing_id"))
+            return {"success": True, "listing_id": str(result.get("listing_id"))}
         else:
-            current_app.logger.warning("[Etsy] Failed to create draft: %s", response.text)
-            return ""
+            error_msg = response.text
+            try:
+                err_data = response.json()
+                if "error" in err_data:
+                    error_msg = err_data["error"]
+            except:
+                pass
+            return {"success": False, "error": f"Etsy API Error: {error_msg}", "stage": "creating_draft"}
 
     def upload_listing_image(self, access_token: str, shop_id: str, listing_id: str, image_path: str, rank: int) -> bool:
         """Uploads a single image to an existing listing."""

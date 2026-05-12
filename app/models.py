@@ -47,6 +47,12 @@ class ItemPlatformStatus(db.Model):
     platform_id = db.Column(db.String(50), nullable=False)
     status = db.Column(db.String(50), nullable=False)
     remote_id = db.Column(db.String(255))
+    remote_url = db.Column(db.Text)
+    last_error = db.Column(db.Text)
+    last_error_code = db.Column(db.String(100))
+    stage = db.Column(db.String(100))
+    attempt_count = db.Column(db.Integer, default=0)
+    last_attempt_at = db.Column(db.DateTime)
     published_at = db.Column(db.String(100))
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 

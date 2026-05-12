@@ -313,6 +313,49 @@
         </div>
 
         <div class="card">
+          <h2>Platform Status</h2>
+          <div class="meta-list">
+            {% if platform_statuses %}
+              {% for status in platform_statuses %}
+                <div class="meta-item" style="border-left: 4px solid {% if status.status == 'published' %}#10b981{% elif status.status == 'failed' or status.status == 'partial_success' %}#ef4444{% else %}#3b82f6{% endif %};">
+                  <div style="display: flex; justify-content: space-between; align-items: start;">
+                    <div>
+                      <div class="meta-label" style="text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em; color: var(--muted);">{{ status.platform_id }}</div>
+                      <div class="meta-value" style="font-weight: 700; color: var(--text);">
+                        {{ status.status|replace('_', ' ')|capitalize }}
+                        {% if status.stage and status.stage != 'idle' and status.stage != 'complete' %}
+                          <span style="font-weight: normal; font-size: 0.85rem; color: var(--muted);">· {{ status.stage|replace('_', ' ') }}</span>
+                        {% endif %}
+                      </div>
+                    </div>
+                    {% if status.status == 'published' or status.remote_id %}
+                      <a href="{{ status.remote_url or '#' }}" target="_blank" class="button-link" style="padding: 4px 8px; font-size: 0.75rem; background: #f3f4f6; color: #374151; border: 1px solid #d1d5db;">View on {{ status.platform_id|capitalize }}</a>
+                    {% endif %}
+                  </div>
+                  
+                  {% if status.last_error %}
+                    <div style="margin-top: 8px; padding: 8px; background: #fff1f2; border-radius: 6px; font-size: 0.85rem; color: #991b1b; border: 1px solid #fecaca;">
+                      <strong>Error:</strong> {{ status.last_error }}
+                    </div>
+                  {% endif %}
+
+                  <div style="margin-top: 10px; display: flex; gap: 8px; align-items: center;">
+                    {% if status.status != 'published' %}
+                      <button type="button" class="publish-btn" data-platform="{{ status.platform_id }}" style="padding: 6px 12px; font-size: 0.85rem; background: #2563eb; color: white;">
+                        {% if status.status == 'failed' or status.status == 'partial_success' %}Retry Publish{% else %}Publish Now{% endif %}
+                      </button>
+                    {% endif %}
+                    <span style="font-size: 0.75rem; color: var(--muted);">Last attempt: {{ status.last_attempt_at or 'Never' }}</span>
+                  </div>
+                </div>
+              {% endfor %}
+            {% else %}
+              <p class="sub">No platform publishing has been requested for this item.</p>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="card">
           <h2>Item History</h2>
           <div class="meta-list">
             <div class="meta-item">
@@ -754,6 +797,44 @@
       
       alert('AI option applied! Review the fields and click Save Changes.');
     };
+
+    // Platform Publishing logic
+    document.querySelectorAll('.publish-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const platform = btn.getAttribute('data-platform');
+        const originalText = btn.textContent;
+        
+        btn.textContent = '⏳ Publishing...';
+        btn.disabled = true;
+        
+        try {
+          const res = await fetch(`/items/{{ item['lot_number'] }}/publish/${platform}`, {
+            method: 'POST',
+            headers: {
+              'X-CSRFToken': document.querySelector('input[name="csrf_token"]').value
+            }
+          });
+          const data = await res.json();
+          
+          if (data.success) {
+            alert(`Successfully published to ${platform}!`);
+            window.location.reload();
+          } else {
+            let msg = data.error || 'Unknown error';
+            if (data.partial) {
+              msg = "Partial success: Draft created but some images failed to upload. \n\nError: " + msg;
+            }
+            alert(`Failed to publish to ${platform}: ${msg}`);
+            window.location.reload(); // Reload to show the error state in UI
+          }
+        } catch (err) {
+          console.error(err);
+          alert('Network error during publishing.');
+          btn.textContent = originalText;
+          btn.disabled = false;
+        }
+      });
+    });
   </script>
 <div id="aiOptionsModal" class="editor-modal" style="padding: 40px 20px; overflow-y: auto; justify-content: flex-start; z-index: 200;"><div class="card" style="max-width: 600px; width: 100%; margin: 0 auto;"><div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;"><h2 style="margin: 0;">AI Identification Options</h2><button type="button" onclick="document.getElementById('aiOptionsModal').classList.remove('active')" style="background: none; color: var(--muted); padding: 0; font-size: 1.5rem; border:0; cursor:pointer;">&times;</button></div><p class="sub">Pick an option to populate the form fields below.</p><div id="aiOptionsContainer"></div><div class="button-row" style="justify-content: flex-end; margin-top: 20px;"><button type="button" class="secondary" onclick="document.getElementById('aiOptionsModal').classList.remove('active')">Cancel</button></div></div></div></body>
 </html>

@@ -15,61 +15,74 @@ PLATFORMS = {
 
 def process_platform_publishing(lot_number: int, form: Dict[str, Any], image_folder: str):
     """
-    Main entry point for publishing a lot to various platforms.
-    Should be called after the item is saved to the local database.
+    Deprecated: Now we initialize status and let the user trigger publish manually.
     """
-    platforms_to_publish = []
-    if form.get("Listing Strategy") == "retail":
-        if form.get("Publish to eBay") == "yes":
-            platforms_to_publish.append("ebay")
-        if form.get("Publish to Etsy") == "yes":
-            platforms_to_publish.append("etsy")
+    pass
 
-    if not platforms_to_publish:
-        return
-
-    for platform_id in platforms_to_publish:
-        if platform_id not in PLATFORMS:
-            current_app.logger.warning("[Publisher] Platform %s not supported for direct publishing yet.", platform_id)
-            continue
-
-        try:
-            publish_to_platform(platform_id, lot_number, form, image_folder)
-        except Exception as exc:
-            current_app.logger.exception(f"Failed to publish lot {lot_number} to {platform_id}")
-
-def publish_to_platform(platform_id: str, lot_number: int, form: Dict[str, Any], image_folder: str):
-    """Orchestrates the publishing for a specific platform."""
-    integration = PLATFORMS[platform_id]
+def publish_to_platform(platform_id: str, lot_number: int, form: Dict[str, Any], image_folder: str, existing_status: Dict[str, Any] = None):
+    """Orchestrates the publishing for a specific platform with detailed tracking."""
+    integration = PLATFORMS.get(platform_id)
+    if not integration:
+        return {"success": False, "error": f"Platform {platform_id} not supported"}
     
     # 1. Get credentials
     creds = get_platform_credentials(platform_id)
     if not creds or not creds.get("access_token"):
-        current_app.logger.warning("[Publisher] %s is not connected. Cannot publish.", platform_id)
-        return
+        update_platform_status(lot_number, platform_id, "failed", last_error="Platform not connected", last_error_code="AUTH_REQUIRED", stage="validating")
+        return {"success": False, "error": f"{platform_id} is not connected"}
 
     # 2. Prepare item data
-    # We need full image paths
     from ..config import settings
     uploads_dir = settings.UPLOADS_DIR
     final_dir = uploads_dir / image_folder
-    image_paths = sorted([str(p) for p in final_dir.iterdir() if p.is_file() and p.suffix.lower() in [".jpg", ".jpeg", ".png"]])
+    image_paths = []
+    if final_dir.exists():
+        image_paths = sorted([str(p) for p in final_dir.iterdir() if p.is_file() and p.suffix.lower() in [".jpg", ".jpeg", ".png"]])
 
     item_data = {
         **form,
         "access_token": creds["access_token"],
         "shop_id": creds["settings"].get("shop_id"),
-        "image_paths": image_paths
+        "image_paths": image_paths,
+        "remote_id": existing_status.get("remote_id") if existing_status else None
     }
 
-    # 3. Call integration
-    current_app.logger.info("[Publisher] Publishing lot %s to %s...", lot_number, platform_id)
-    remote_id = integration.publish_listing(lot_number, item_data)
-    
-    if remote_id:
-        current_app.logger.info("[Publisher] Successfully published lot %s to %s. Remote ID: %s", lot_number, platform_id, remote_id)
-        # 4. Update status in database
-        update_platform_status(lot_number, platform_id, "published", remote_id=remote_id)
-    else:
-        current_app.logger.warning("[Publisher] Failed to publish lot %s to %s.", lot_number, platform_id)
-        update_platform_status(lot_number, platform_id, "failed")
+    # 3. Mark as publishing
+    update_platform_status(lot_number, platform_id, "publishing", stage="starting", increment_attempt=True)
+
+    # 4. Call integration
+    try:
+        res = integration.publish_listing(lot_number, item_data)
+        
+        if res.get("success"):
+            update_platform_status(
+                lot_number, 
+                platform_id, 
+                "published", 
+                remote_id=res.get("listing_id"),
+                remote_url=res.get("remote_url"),
+                last_error="",
+                last_error_code="",
+                stage="complete"
+            )
+            return {"success": True, "listing_id": res.get("listing_id")}
+        else:
+            status = "failed"
+            if res.get("partial"):
+                status = "partial_success"
+            
+            update_platform_status(
+                lot_number, 
+                platform_id, 
+                status, 
+                remote_id=res.get("listing_id"),
+                last_error=res.get("error", "Unknown error"),
+                last_error_code=res.get("error_code", ""),
+                stage=res.get("stage", "unknown")
+            )
+            return {"success": False, "error": res.get("error"), "partial": res.get("partial")}
+            
+    except Exception as exc:
+        current_app.logger.exception(f"Exception during {platform_id} publishing")
+        update_platform_status(lot_number, platform_id, "failed", last_error=str(exc), stage="exception")
+        return {"success": False, "error": str(exc)}
