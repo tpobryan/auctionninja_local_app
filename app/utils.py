@@ -218,7 +218,11 @@ def blank_form(seller_notes: str = "") -> dict[str, str]:
         "Shipping Available": "",
         "Listing Strategy": "auction",
         "eBay SEO Title": "",
-        "eBay Category Suggestion": "",
+        "eBay Category ID": "",
+        "eBay Fulfillment Policy ID": "",
+        "eBay Payment Policy ID": "",
+        "eBay Return Policy ID": "",
+        "eBay Condition": "USED_EXCELLENT",
         "eBay Item Specifics": "{}",
         "Etsy Tags": "",
         "Etsy Materials": "",
@@ -231,6 +235,11 @@ def blank_form(seller_notes: str = "") -> dict[str, str]:
         "Quantity": "1",
         "Publish to eBay": "no",
         "Publish to Etsy": "",
+        "Publish to Poshmark": "no",
+        "Poshmark Brand": "",
+        "Poshmark Size": "",
+        "Poshmark Style Tags": "",
+        "Poshmark SEO Title": "",
         "Item Weight": "",
         "Item Weight Unit": "lb",
     }
@@ -277,7 +286,11 @@ def form_from_request(seller_notes: str = "") -> dict[str, str]:
         "Shipping Available": request.form.get("Shipping Available", "").strip(),
         "Listing Strategy": request.form.get("Listing Strategy", "auction").strip(),
         "eBay SEO Title": request.form.get("eBay SEO Title", "").strip(),
-        "eBay Category Suggestion": request.form.get("eBay Category Suggestion", "").strip(),
+        "eBay Category ID": request.form.get("eBay Category ID", "").strip(),
+        "eBay Fulfillment Policy ID": request.form.get("eBay Fulfillment Policy ID", "").strip(),
+        "eBay Payment Policy ID": request.form.get("eBay Payment Policy ID", "").strip(),
+        "eBay Return Policy ID": request.form.get("eBay Return Policy ID", "").strip(),
+        "eBay Condition": request.form.get("eBay Condition", "USED_EXCELLENT").strip(),
         "eBay Item Specifics": request.form.get("eBay Item Specifics", "{}").strip(),
         "Etsy Tags": request.form.get("Etsy Tags", "").strip(),
         "Etsy Materials": request.form.get("Etsy Materials", "").strip(),
@@ -285,6 +298,11 @@ def form_from_request(seller_notes: str = "") -> dict[str, str]:
         "Etsy Shipping Profile ID": request.form.get("Etsy Shipping Profile ID", "").strip(),
         "Publish to eBay": request.form.get("Publish to eBay", "").strip(),
         "Publish to Etsy": request.form.get("Publish to Etsy", "").strip(),
+        "Publish to Poshmark": request.form.get("Publish to Poshmark", "").strip(),
+        "Poshmark Brand": request.form.get("Poshmark Brand", "").strip(),
+        "Poshmark Size": request.form.get("Poshmark Size", "").strip(),
+        "Poshmark Style Tags": request.form.get("Poshmark Style Tags", "").strip(),
+        "Poshmark SEO Title": request.form.get("Poshmark SEO Title", "").strip(),
         "Item Weight": request.form.get("Item Weight", "").strip(),
         "Item Weight Unit": request.form.get("Item Weight Unit", "lb").strip(),
     }
@@ -321,6 +339,12 @@ def form_from_option(option: dict, seller_notes: str = "", strategy: str = "auct
         form["Price Rationale"] = str(etsy.get("price_rationale", "")).strip()
         form["Quantity"] = str(etsy.get("suggested_quantity", 1)).strip()
         
+        posh = platform_data.get("poshmark", {})
+        form["Poshmark Brand"] = str(posh.get("brand", "")).strip()
+        form["Poshmark Size"] = str(posh.get("size", "")).strip()
+        form["Poshmark Style Tags"] = ", ".join(posh.get("style_tags", [])) if isinstance(posh.get("style_tags"), list) else ""
+        form["Poshmark SEO Title"] = str(posh.get("seo_title", "")).strip()
+        
     return form
 
 def form_from_saved_item(record: dict[str, str]) -> dict[str, str]:
@@ -350,6 +374,10 @@ def form_from_saved_item(record: dict[str, str]) -> dict[str, str]:
         "Listing Strategy": record.get("listing_strategy", "auction"),
         "eBay Category ID": platform_data.get("ebay_category_id", ""),
         "eBay SEO Title": platform_data.get("ebay_seo_title", ""),
+        "eBay Fulfillment Policy ID": platform_data.get("ebay_fulfillment_policy_id", ""),
+        "eBay Payment Policy ID": platform_data.get("ebay_payment_policy_id", ""),
+        "eBay Return Policy ID": platform_data.get("ebay_return_policy_id", ""),
+        "eBay Condition": platform_data.get("ebay_condition", "USED_EXCELLENT"),
         "Etsy Taxonomy ID": platform_data.get("etsy_taxonomy_id", ""),
         "Etsy Tags": platform_data.get("etsy_tags", ""),
         "Etsy Materials": platform_data.get("etsy_materials", ""),
@@ -363,6 +391,11 @@ def form_from_saved_item(record: dict[str, str]) -> dict[str, str]:
         "Item Weight Unit": platform_data.get("etsy_weight_unit", "lb"),
         "Publish to eBay": "yes" if platform_data.get("publish_to_ebay") else "no",
         "Publish to Etsy": "yes" if platform_data.get("publish_to_etsy") else "no",
+        "Publish to Poshmark": "yes" if platform_data.get("publish_to_poshmark") else "no",
+        "Poshmark Brand": platform_data.get("poshmark_brand", ""),
+        "Poshmark Size": platform_data.get("poshmark_size", ""),
+        "Poshmark Style Tags": platform_data.get("poshmark_style_tags", ""),
+        "Poshmark SEO Title": platform_data.get("poshmark_seo_title", ""),
     }
 
 def parse_decimal_field(value: str) -> float | None:

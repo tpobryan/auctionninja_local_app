@@ -39,11 +39,30 @@ def publish_to_platform(platform_id: str, lot_number: int, form: Dict[str, Any],
     if final_dir.exists():
         image_paths = sorted([str(p) for p in final_dir.iterdir() if p.is_file() and p.suffix.lower() in [".jpg", ".jpeg", ".png"]])
 
+    # eBay needs public URLs
+    image_urls = []
+    if platform_id == "ebay":
+        from ..database import fetch_ftp_upload
+        ftp_info = fetch_ftp_upload(lot_number)
+        if ftp_info:
+            auction_num = ftp_info.get("auction_number")
+            remote_names = ftp_info.get("remote_names", "")
+            if isinstance(remote_names, str):
+                try:
+                    remote_names = json.loads(remote_names)
+                except:
+                    remote_names = []
+            
+            base_url = settings.IMAGE_BASE_URL.rstrip("/")
+            for name in remote_names:
+                image_urls.append(f"{base_url}/{auction_num}/{name}")
+
     item_data = {
         **form,
         "access_token": creds["access_token"],
         "shop_id": creds["settings"].get("shop_id"),
         "image_paths": image_paths,
+        "image_urls": image_urls,
         "remote_id": existing_status.get("remote_id") if existing_status else None
     }
 

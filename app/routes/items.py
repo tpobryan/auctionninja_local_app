@@ -64,14 +64,27 @@ def edit_saved_item(lot_number: int):
     # Fetch Etsy shipping profiles
     etsy_shipping_profiles = []
     try:
-        creds = get_platform_credentials("etsy")
-        if creds:
-            shop_id = creds.get('settings', {}).get('shop_id')
+        creds_etsy = get_platform_credentials("etsy")
+        if creds_etsy:
+            shop_id = creds_etsy.get('settings', {}).get('shop_id')
             etsy = PLATFORMS.get("etsy")
             if etsy:
-                etsy_shipping_profiles = etsy.get_shipping_profiles(creds["access_token"], shop_id)
+                etsy_shipping_profiles = etsy.get_shipping_profiles(creds_etsy["access_token"], shop_id)
     except Exception as exc:
         current_app.logger.warning("[Items] Failed to fetch Etsy shipping profiles: %s", exc)
+
+    # Fetch eBay policies
+    ebay_policies = {"fulfillment": [], "payment": [], "return": []}
+    try:
+        creds_ebay = get_platform_credentials("ebay")
+        if creds_ebay:
+            ebay = PLATFORMS.get("ebay")
+            if ebay:
+                ebay_policies["fulfillment"] = ebay.get_fulfillment_policies(creds_ebay["access_token"])
+                ebay_policies["payment"] = ebay.get_payment_policies(creds_ebay["access_token"])
+                ebay_policies["return"] = ebay.get_return_policies(creds_ebay["access_token"])
+    except Exception as exc:
+        current_app.logger.warning("[Items] Failed to fetch eBay policies: %s", exc)
 
     return render_template(
         "saved_item_edit.html",
@@ -83,6 +96,7 @@ def edit_saved_item(lot_number: int):
         current_filter=normalize_manage_filter(request.args.get("status", "active")),
         platform_statuses=platform_statuses,
         etsy_shipping_profiles=etsy_shipping_profiles,
+        ebay_policies=ebay_policies,
     )
 
 @items_bp.route("/items/<int:lot_number>/update", methods=["POST"])

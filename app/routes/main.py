@@ -488,7 +488,9 @@ def save():
     uploaded_names = []
     auction_photo_index = 0
 
-    if auction_number and form.get("Listing Strategy") == "auction":
+    should_upload_ftp = (form.get("Listing Strategy") == "auction") or (form.get("Publish to eBay") == "yes")
+    
+    if auction_number and should_upload_ftp:
         try:
             auction_photo_index = reserve_next_auction_photo_index(auction_number)
             local_jpgs = sorted([p for p in final_dir.iterdir() if p.is_file() and p.suffix.lower() == ".jpg"])

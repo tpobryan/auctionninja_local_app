@@ -332,6 +332,12 @@ REQUIRED JSON STRUCTURE:
           "suggested_price": 0.00,
           "price_rationale": "Brief explanation of why this price was suggested based on brand, era, or condition",
           "suggested_quantity": 1
+        },
+        "poshmark": {
+          "brand": "Suggested Brand Name",
+          "size": "Standardized Size (e.g. S, M, L, 6, 8, OS)",
+          "style_tags": ["#tag1", "#tag2", "#tag3"],
+          "seo_title": "50-character optimized title"
         }
       }
     }
@@ -339,6 +345,11 @@ REQUIRED JSON STRUCTURE:
 }
 
 Ensure the eBay SEO title is catchy and max 80 characters.
+For Poshmark:
+- brand: If no brand is visible, use 'Boutique' or 'Unknown'.
+- size: Use standard US sizes.
+- seo_title: STRICT 50 character limit. Format: Brand + Category + Size.
+- style_tags: Use relevant hashtags (max 3).
 For Etsy: 
 - who_made: 'i_did' if it looks handmade by a person, 'someone_else' if manufactured.
 - when_made: Be precise about the era. If it's vintage (20+ years), pick the right decade.

@@ -44,6 +44,7 @@ class Settings(BaseSettings):
     EBAY_CLIENT_SECRET: str = ""
     EBAY_RUNAME: str = ""
     EBAY_REDIRECT_URI: str = ""
+    IMAGE_BASE_URL: str = "https://inventory.treasureandthyme.com"
 
     # Path settings
     DATA_DIR: Path = BASE_DIR / "data"

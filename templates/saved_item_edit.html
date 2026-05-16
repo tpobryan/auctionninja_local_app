@@ -332,6 +332,15 @@
         grid-template-columns: 1fr;
       }
     }
+
+    .thumb-grid.square-mode .thumb {
+      aspect-ratio: 1 / 1;
+      overflow: hidden;
+    }
+    .thumb-grid.square-mode .thumb img {
+      height: 100%;
+      object-fit: cover;
+    }
   </style>
 </head>
 <body>
@@ -362,7 +371,10 @@
           <p class="sub">Update the listing fields for this saved item. If a published item changes, it will move to <strong>needs_update</strong> so you can export it again.</p>
 
           {% if image_files %}
-            <div class="thumb-grid">
+            <div style="display: flex; justify-content: flex-end; margin-bottom: 10px;">
+               <button type="button" id="toggleSquare" class="secondary" style="font-size: 0.8rem; padding: 6px 12px;">Toggle Poshmark Square Preview</button>
+            </div>
+            <div class="thumb-grid" id="mainThumbGrid">
               {% for image_file in image_files %}
                 <div class="thumb">
                   <img src="{{ image_url_prefix }}{{ image_file }}" alt="Saved item image">
@@ -478,6 +490,7 @@
               <button type="button" class="tab-btn" data-tab="auction">Auction Details</button>
               <button type="button" class="tab-btn" data-tab="ebay">eBay Draft</button>
               <button type="button" class="tab-btn" data-tab="etsy">Etsy Draft</button>
+              <button type="button" class="tab-btn" data-tab="poshmark">Poshmark Draft</button>
             </div>
 
             <!-- TAB: CORE INFO -->
@@ -587,13 +600,57 @@
                 </label>
 
                 <div class="field">
+                  <label for="eBay Condition">Item Condition</label>
+                  <select id="eBay Condition" name="eBay Condition">
+                    <option value="NEW" {% if form.get('eBay Condition') == 'NEW' %}selected{% endif %}>New</option>
+                    <option value="NEW_OTHER" {% if form.get('eBay Condition') == 'NEW_OTHER' %}selected{% endif %}>New Other</option>
+                    <option value="LIKE_NEW" {% if form.get('eBay Condition') == 'LIKE_NEW' %}selected{% endif %}>Like New</option>
+                    <option value="USED_EXCELLENT" {% if form.get('eBay Condition', 'USED_EXCELLENT') == 'USED_EXCELLENT' %}selected{% endif %}>Used - Excellent</option>
+                    <option value="USED_VERY_GOOD" {% if form.get('eBay Condition') == 'USED_VERY_GOOD' %}selected{% endif %}>Used - Very Good</option>
+                    <option value="USED_GOOD" {% if form.get('eBay Condition') == 'USED_GOOD' %}selected{% endif %}>Used - Good</option>
+                    <option value="USED_ACCEPTABLE" {% if form.get('eBay Condition') == 'USED_ACCEPTABLE' %}selected{% endif %}>Used - Acceptable</option>
+                    <option value="FOR_PARTS_OR_NOT_WORKING" {% if form.get('eBay Condition') == 'FOR_PARTS_OR_NOT_WORKING' %}selected{% endif %}>For Parts / Not Working</option>
+                  </select>
+                </div>
+
+                <div class="field">
                   <label for="eBay SEO Title">eBay Optimized Title</label>
                   <textarea id="eBay SEO Title" name="eBay SEO Title" rows="2">{{ form.get('eBay SEO Title', '') }}</textarea>
                 </div>
 
                 <div class="field">
                   <label for="eBay Category ID">eBay Category ID</label>
-                  <input type="text" id="eBay Category ID" name="eBay Category ID" value="{{ form.get('eBay Category ID', '') }}" placeholder="Enter ID to publish">
+                  <input type="text" id="eBay Category ID" name="eBay Category ID" value="{{ form.get('eBay Category ID', '') }}" placeholder="Enter ID (e.g. 37905)">
+                </div>
+
+                <div class="field">
+                  <label for="eBay Fulfillment Policy ID">Fulfillment Policy (Shipping)</label>
+                  <select id="eBay Fulfillment Policy ID" name="eBay Fulfillment Policy ID">
+                    <option value="">-- Select Policy --</option>
+                    {% for policy in ebay_policies.fulfillment %}
+                      <option value="{{ policy.fulfillmentPolicyId }}" {% if form.get('eBay Fulfillment Policy ID') == policy.fulfillmentPolicyId %}selected{% endif %}>{{ policy.name }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+
+                <div class="field">
+                  <label for="eBay Payment Policy ID">Payment Policy</label>
+                  <select id="eBay Payment Policy ID" name="eBay Payment Policy ID">
+                    <option value="">-- Select Policy --</option>
+                    {% for policy in ebay_policies.payment %}
+                      <option value="{{ policy.paymentPolicyId }}" {% if form.get('eBay Payment Policy ID') == policy.paymentPolicyId %}selected{% endif %}>{{ policy.name }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+
+                <div class="field">
+                  <label for="eBay Return Policy ID">Return Policy</label>
+                  <select id="eBay Return Policy ID" name="eBay Return Policy ID">
+                    <option value="">-- Select Policy --</option>
+                    {% for policy in ebay_policies.return %}
+                      <option value="{{ policy.returnPolicyId }}" {% if form.get('eBay Return Policy ID') == policy.returnPolicyId %}selected{% endif %}>{{ policy.name }}</option>
+                    {% endfor %}
+                  </select>
                 </div>
               </div>
             </div>
@@ -655,13 +712,77 @@
                     </select>
                   </div>
                 </div>
-
                 <div class="field">
                   <label for="Etsy Is Supply">Is this a supply/tool?</label>
                   <select id="Etsy Is Supply" name="Etsy Is Supply">
                     <option value="no" {% if form.get('Etsy Is Supply') == 'no' %}selected{% endif %}>No (Finished Item)</option>
-                    <option value="yes" {% if form.get('Etsy Is Supply') == 'yes' %}selected{% endif %}>Yes (Supply/Tool)</option>
+                    <option value="yes" {% if form.get('Etsy Is Supply') == 'yes' %}checked{% endif %}>Yes (Supply/Tool)</option>
                   </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB: POSHMARK -->
+            <div id="tab-poshmark" class="tab-content">
+              <div style="background: #fff0f0; padding: 16px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 14px;">
+                <label style="display: flex; align-items: center; gap: 8px; font-weight: 700; margin-bottom: 16px; cursor: pointer;">
+                  <input type="checkbox" name="Publish to Poshmark" value="yes" {% if form.get('Publish to Poshmark') == 'yes' %}checked{% endif %}>
+                  Track Poshmark Listing
+                </label>
+                
+                <p class="help" style="margin-bottom: 16px;">Poshmark does not have a public API. Use these fields to prepare your data, then use the <strong>Copy</strong> buttons to paste them into Poshmark.</p>
+                
+                <div class="field">
+                   <a href="https://poshmark.com/listing/editor" target="_blank" class="button-link" style="width: 100%; text-align: center; background: #eb1537; color: white;">Open Poshmark Listing Form ↗</a>
+                </div>
+
+                <div class="field">
+                  <label for="Poshmark SEO Title" style="display: flex; justify-content: space-between;">
+                    Poshmark Optimized Title (Max 50)
+                    <button type="button" class="copy-btn" data-target="Poshmark SEO Title" style="padding: 2px 8px; font-size: 0.7rem; background: #eee; color: #333; border: 1px solid #ccc; border-radius: 4px; cursor: pointer;">Copy</button>
+                  </label>
+                  <input type="text" id="Poshmark SEO Title" name="Poshmark SEO Title" value="{{ form.get('Poshmark SEO Title', '') }}" maxlength="50">
+                </div>
+
+                <div class="field">
+                   <label for="posh_desc" style="display: flex; justify-content: space-between;">
+                     Description
+                     <button type="button" class="copy-btn" data-target="Description" style="padding: 2px 8px; font-size: 0.7rem; background: #eee; color: #333; border: 1px solid #ccc; border-radius: 4px; cursor: pointer;">Copy</button>
+                   </label>
+                   <textarea id="posh_desc" readonly style="background: #f9f9f9; font-size: 0.9rem;">{{ form['Description'] }}</textarea>
+                </div>
+
+                <div class="grid-2">
+                  <div class="field">
+                    <label for="Poshmark Brand" style="display: flex; justify-content: space-between;">
+                      Brand
+                      <button type="button" class="copy-btn" data-target="Poshmark Brand" style="padding: 2px 8px; font-size: 0.7rem; background: #eee; color: #333; border: 1px solid #ccc; border-radius: 4px; cursor: pointer;">Copy</button>
+                    </label>
+                    <input type="text" id="Poshmark Brand" name="Poshmark Brand" value="{{ form.get('Poshmark Brand', '') }}">
+                  </div>
+                  <div class="field">
+                    <label for="Poshmark Size" style="display: flex; justify-content: space-between;">
+                      Size
+                      <button type="button" class="copy-btn" data-target="Poshmark Size" style="padding: 2px 8px; font-size: 0.7rem; background: #eee; color: #333; border: 1px solid #ccc; border-radius: 4px; cursor: pointer;">Copy</button>
+                    </label>
+                    <input type="text" id="Poshmark Size" name="Poshmark Size" value="{{ form.get('Poshmark Size', '') }}">
+                  </div>
+                </div>
+
+                <div class="field">
+                  <label for="posh_price" style="display: flex; justify-content: space-between;">
+                    Price
+                    <button type="button" class="copy-btn" data-target="Price" style="padding: 2px 8px; font-size: 0.7rem; background: #eee; color: #333; border: 1px solid #ccc; border-radius: 4px; cursor: pointer;">Copy</button>
+                  </label>
+                  <input type="text" id="posh_price" readonly value="{{ form.get('Price', '0.00') }}" style="background: #f9f9f9;">
+                </div>
+
+                <div class="field">
+                  <label for="Poshmark Style Tags" style="display: flex; justify-content: space-between;">
+                    Style Tags (Max 3)
+                    <button type="button" class="copy-btn" data-target="Poshmark Style Tags" style="padding: 2px 8px; font-size: 0.7rem; background: #eee; color: #333; border: 1px solid #ccc; border-radius: 4px; cursor: pointer;">Copy</button>
+                  </label>
+                  <input type="text" id="Poshmark Style Tags" name="Poshmark Style Tags" value="{{ form.get('Poshmark Style Tags', '') }}" placeholder="e.g. #vintage, #boho">
                 </div>
               </div>
             </div>
@@ -796,6 +917,17 @@
         }
       });
 
+      // Square toggle
+      const toggleSquare = document.getElementById('toggleSquare');
+      const mainThumbGrid = document.getElementById('mainThumbGrid');
+      if (toggleSquare && mainThumbGrid) {
+        toggleSquare.addEventListener('click', () => {
+          mainThumbGrid.classList.toggle('square-mode');
+          toggleSquare.classList.toggle('active');
+          toggleSquare.textContent = mainThumbGrid.classList.contains('square-mode') ? 'Show Original Aspect' : 'Toggle Poshmark Square Preview';
+        });
+      }
+
       // Tab logic
       document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -907,6 +1039,7 @@
         const ebay = pd.ebay || {};
         if (document.getElementById('eBay SEO Title')) document.getElementById('eBay SEO Title').value = ebay.seo_title || '';
         if (document.getElementById('eBay Category ID')) document.getElementById('eBay Category ID').value = ebay.category_id || '';
+        if (document.getElementById('eBay Condition')) document.getElementById('eBay Condition').value = ebay.condition || 'USED_EXCELLENT';
         
         const etsy = pd.etsy || {};
         if (document.getElementById('Price')) document.getElementById('Price').value = (etsy.suggested_price || 0).toFixed(2);
@@ -915,9 +1048,15 @@
         if (document.getElementById('Etsy Tags')) document.getElementById('Etsy Tags').value = (etsy.tags || []).join(', ');
         if (document.getElementById('Etsy Materials')) document.getElementById('Etsy Materials').value = (etsy.materials || []).join(', ');
 
+        const posh = pd.poshmark || {};
+        if (document.getElementById('Poshmark SEO Title')) document.getElementById('Poshmark SEO Title').value = posh.seo_title || '';
+        if (document.getElementById('Poshmark Brand')) document.getElementById('Poshmark Brand').value = posh.brand || '';
+        if (document.getElementById('Poshmark Size')) document.getElementById('Poshmark Size').value = posh.size || '';
+        if (document.getElementById('Poshmark Style Tags')) document.getElementById('Poshmark Style Tags').value = (posh.style_tags || []).join(', ');
+
         aiOptionsModal.classList.remove('active');
         
-        if (pd.ebay || pd.etsy) {
+        if (pd.ebay || pd.etsy || pd.poshmark) {
           const strategySelect = document.getElementById('ListingStrategy');
           if (strategySelect) {
               strategySelect.value = 'retail';
@@ -927,6 +1066,29 @@
         
         alert('AI option applied! Review the fields and click Save Changes.');
       };
+
+      // Copy to Clipboard logic
+      document.querySelectorAll('.copy-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const targetId = btn.getAttribute('data-target');
+          const target = document.getElementById(targetId);
+          if (target) {
+            target.select();
+            target.setSelectionRange(0, 99999);
+            document.execCommand('copy');
+            
+            const originalText = btn.textContent;
+            btn.textContent = 'Copied!';
+            btn.style.background = '#10b981';
+            btn.style.color = 'white';
+            setTimeout(() => {
+              btn.textContent = originalText;
+              btn.style.background = '';
+              btn.style.color = '';
+            }, 1500);
+          }
+        });
+      });
 
       // Platform Publishing logic
       document.querySelectorAll('.publish-btn').forEach(btn => {
