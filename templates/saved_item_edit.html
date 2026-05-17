@@ -1057,7 +1057,7 @@
           try {
             const formData = new FormData();
             formData.append('csrf_token', document.querySelector('input[name="csrf_token"]').value);
-            formData.append('strategy', document.getElementById('ListingStrategy').value);
+            formData.append('strategy', 'retail'); // Force retail strategy to ensure marketplace fields are populated
 
             const res = await fetch(`/api/items/{{ item['lot_number'] }}/reanalyze`, {
               method: 'POST',
@@ -1100,6 +1100,7 @@
       }
 
       function applyAiOption(opt) {
+        console.log("Applying AI Option:", opt);
         if (document.getElementById('Title')) document.getElementById('Title').value = opt.title || '';
         if (document.getElementById('Description')) document.getElementById('Description').value = opt.description || '';
         if (document.getElementById('Condition Summary')) document.getElementById('Condition Summary').value = opt.condition_summary || '';

@@ -316,7 +316,9 @@ def reanalyze_item(lot_number: int):
             seller_notes=seller_notes,
             strategy=strategy
         )
-        return {"success": True, "options": result.get("options", [])}
+        options = result.get("options", [])
+        current_app.logger.info(f"Reanalyze AI Options: {json.dumps(options, indent=2)}")
+        return {"success": True, "options": options}
     except Exception as exc:
         current_app.logger.exception("AI re-analysis failed")
         return {"success": False, "error": str(exc)}, 500
