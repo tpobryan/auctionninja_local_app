@@ -1117,14 +1117,20 @@
         if (document.getElementById('Price')) document.getElementById('Price').value = (etsy.suggested_price || 0).toFixed(2);
         if (document.getElementById('Quantity')) document.getElementById('Quantity').value = etsy.suggested_quantity || 1;
         if (document.getElementById('Etsy Taxonomy ID')) document.getElementById('Etsy Taxonomy ID').value = etsy.taxonomy_id || '';
-        if (document.getElementById('Etsy Tags')) document.getElementById('Etsy Tags').value = (etsy.tags || []).join(', ');
-        if (document.getElementById('Etsy Materials')) document.getElementById('Etsy Materials').value = (etsy.materials || []).join(', ');
+        
+        const etsyTags = Array.isArray(etsy.tags) ? etsy.tags.join(', ') : (etsy.tags || '');
+        if (document.getElementById('Etsy Tags')) document.getElementById('Etsy Tags').value = etsyTags;
+        
+        const etsyMaterials = Array.isArray(etsy.materials) ? etsy.materials.join(', ') : (etsy.materials || '');
+        if (document.getElementById('Etsy Materials')) document.getElementById('Etsy Materials').value = etsyMaterials;
 
         const posh = pd.poshmark || {};
         if (document.getElementById('Poshmark SEO Title')) document.getElementById('Poshmark SEO Title').value = posh.seo_title || '';
         if (document.getElementById('Poshmark Brand')) document.getElementById('Poshmark Brand').value = posh.brand || '';
         if (document.getElementById('Poshmark Size')) document.getElementById('Poshmark Size').value = posh.size || '';
-        if (document.getElementById('Poshmark Style Tags')) document.getElementById('Poshmark Style Tags').value = (posh.style_tags || []).join(', ');
+        
+        const poshTags = Array.isArray(posh.style_tags) ? posh.style_tags.join(', ') : (posh.style_tags || '');
+        if (document.getElementById('Poshmark Style Tags')) document.getElementById('Poshmark Style Tags').value = poshTags;
 
         const vinted = pd.vinted || {};
         if (document.getElementById('Vinted SEO Title')) document.getElementById('Vinted SEO Title').value = vinted.seo_title || '';
