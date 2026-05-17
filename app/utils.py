@@ -240,6 +240,11 @@ def blank_form(seller_notes: str = "") -> dict[str, str]:
         "Poshmark Size": "",
         "Poshmark Style Tags": "",
         "Poshmark SEO Title": "",
+        "Publish to Vinted": "no",
+        "Vinted Brand": "",
+        "Vinted Condition": "very_good",
+        "Vinted Parcel Size": "Medium",
+        "Vinted SEO Title": "",
         "Item Weight": "",
         "Item Weight Unit": "lb",
     }
@@ -303,6 +308,11 @@ def form_from_request(seller_notes: str = "") -> dict[str, str]:
         "Poshmark Size": request.form.get("Poshmark Size", "").strip(),
         "Poshmark Style Tags": request.form.get("Poshmark Style Tags", "").strip(),
         "Poshmark SEO Title": request.form.get("Poshmark SEO Title", "").strip(),
+        "Publish to Vinted": request.form.get("Publish to Vinted", "").strip(),
+        "Vinted Brand": request.form.get("Vinted Brand", "").strip(),
+        "Vinted Condition": request.form.get("Vinted Condition", "very_good").strip(),
+        "Vinted Parcel Size": request.form.get("Vinted Parcel Size", "Medium").strip(),
+        "Vinted SEO Title": request.form.get("Vinted SEO Title", "").strip(),
         "Item Weight": request.form.get("Item Weight", "").strip(),
         "Item Weight Unit": request.form.get("Item Weight Unit", "lb").strip(),
     }
@@ -344,6 +354,12 @@ def form_from_option(option: dict, seller_notes: str = "", strategy: str = "auct
         form["Poshmark Size"] = str(posh.get("size", "")).strip()
         form["Poshmark Style Tags"] = ", ".join(posh.get("style_tags", [])) if isinstance(posh.get("style_tags"), list) else ""
         form["Poshmark SEO Title"] = str(posh.get("seo_title", "")).strip()
+        
+        vinted = platform_data.get("vinted", {})
+        form["Vinted Brand"] = str(vinted.get("brand", "")).strip()
+        form["Vinted Condition"] = str(vinted.get("condition", "very_good")).strip()
+        form["Vinted Parcel Size"] = str(vinted.get("parcel_size", "Medium")).strip()
+        form["Vinted SEO Title"] = str(vinted.get("seo_title", "")).strip()
         
     return form
 
@@ -396,6 +412,11 @@ def form_from_saved_item(record: dict[str, str]) -> dict[str, str]:
         "Poshmark Size": platform_data.get("poshmark_size", ""),
         "Poshmark Style Tags": platform_data.get("poshmark_style_tags", ""),
         "Poshmark SEO Title": platform_data.get("poshmark_seo_title", ""),
+        "Publish to Vinted": "yes" if platform_data.get("publish_to_vinted") else "no",
+        "Vinted Brand": platform_data.get("vinted_brand", ""),
+        "Vinted Condition": platform_data.get("vinted_condition", "very_good"),
+        "Vinted Parcel Size": platform_data.get("vinted_parcel_size", "Medium"),
+        "Vinted SEO Title": platform_data.get("vinted_seo_title", ""),
     }
 
 def parse_decimal_field(value: str) -> float | None:

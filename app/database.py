@@ -920,9 +920,14 @@ def item_record_from_form(lot_number: int, form: dict[str, str], image_folder: s
             "poshmark_size": form.get("Poshmark Size", ""),
             "poshmark_style_tags": form.get("Poshmark Style Tags", ""),
             "poshmark_seo_title": form.get("Poshmark SEO Title", ""),
+            "vinted_brand": form.get("Vinted Brand", ""),
+            "vinted_condition": form.get("Vinted Condition", "very_good"),
+            "vinted_parcel_size": form.get("Vinted Parcel Size", "Medium"),
+            "vinted_seo_title": form.get("Vinted SEO Title", ""),
             "publish_to_ebay": form.get("Publish to eBay") == "yes",
             "publish_to_etsy": form.get("Publish to Etsy") == "yes",
             "publish_to_poshmark": form.get("Publish to Poshmark") == "yes",
+            "publish_to_vinted": form.get("Publish to Vinted") == "yes",
         }) if form.get("Listing Strategy") != "auction" else "",
     }
 
@@ -1532,9 +1537,14 @@ def saved_item_fields_from_form(form: dict[str, str]) -> dict[str, str]:
             "poshmark_size": form.get("Poshmark Size", ""),
             "poshmark_style_tags": form.get("Poshmark Style Tags", ""),
             "poshmark_seo_title": form.get("Poshmark SEO Title", ""),
+            "vinted_brand": form.get("Vinted Brand", ""),
+            "vinted_condition": form.get("Vinted Condition", "very_good"),
+            "vinted_parcel_size": form.get("Vinted Parcel Size", "Medium"),
+            "vinted_seo_title": form.get("Vinted SEO Title", ""),
             "publish_to_ebay": form.get("Publish to eBay") == "yes",
             "publish_to_etsy": form.get("Publish to Etsy") == "yes",
             "publish_to_poshmark": form.get("Publish to Poshmark") == "yes",
+            "publish_to_vinted": form.get("Publish to Vinted") == "yes",
         })
     }
 

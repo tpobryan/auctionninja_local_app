@@ -338,6 +338,12 @@ REQUIRED JSON STRUCTURE:
           "size": "Standardized Size (e.g. S, M, L, 6, 8, OS)",
           "style_tags": ["#tag1", "#tag2", "#tag3"],
           "seo_title": "50-character optimized title"
+        },
+        "vinted": {
+          "brand": "Suggested Brand Name",
+          "condition": "new_with_tags OR new_without_tags OR very_good OR good OR satisfactory",
+          "parcel_size": "Small OR Medium OR Large",
+          "seo_title": "Clear descriptive title"
         }
       }
     }
@@ -355,6 +361,9 @@ For Etsy:
 - when_made: Be precise about the era. If it's vintage (20+ years), pick the right decade.
 - suggested_price: Based on visual appraisal of resale value.
 - taxonomy_id: Use a valid ID from the cheat sheet above.
+For Vinted:
+- condition: Be objective. Default to 'very_good' if used and looks nice, or 'good' if obvious wear.
+- parcel_size: 'Small' for accessories/light tops, 'Medium' for regular clothes, 'Large' for shoes/heavy jackets.
 """
 MARKETPLACE_INSTRUCTION = MARKETPLACE_INSTRUCTION.strip()
 

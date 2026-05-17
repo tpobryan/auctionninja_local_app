@@ -491,6 +491,7 @@
               <button type="button" class="tab-btn" data-tab="ebay">eBay Draft</button>
               <button type="button" class="tab-btn" data-tab="etsy">Etsy Draft</button>
               <button type="button" class="tab-btn" data-tab="poshmark">Poshmark Draft</button>
+              <button type="button" class="tab-btn" data-tab="vinted">Vinted Draft</button>
             </div>
 
             <!-- TAB: CORE INFO -->
@@ -786,6 +787,76 @@
                 </div>
               </div>
             </div>
+
+            <!-- TAB: VINTED -->
+            <div id="tab-vinted" class="tab-content">
+              <div style="background: #eaf6f4; padding: 16px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 14px;">
+                <label style="display: flex; align-items: center; gap: 8px; font-weight: 700; margin-bottom: 16px; cursor: pointer;">
+                  <input type="checkbox" name="Publish to Vinted" value="yes" {% if form.get('Publish to Vinted') == 'yes' %}checked{% endif %}>
+                  Track Vinted Listing
+                </label>
+                
+                <p class="help" style="margin-bottom: 16px;">Vinted does not have a public API. Use these fields to prepare your data, then use the <strong>Copy</strong> buttons to paste them into Vinted.</p>
+                
+                <div class="field">
+                   <a href="https://www.vinted.com/items/new" target="_blank" class="button-link" style="width: 100%; text-align: center; background: #007782; color: white;">Open Vinted Listing Form ↗</a>
+                </div>
+
+                <div class="field">
+                  <label for="Vinted SEO Title" style="display: flex; justify-content: space-between;">
+                    Vinted Title
+                    <button type="button" class="copy-btn" data-target="Vinted SEO Title" style="padding: 2px 8px; font-size: 0.7rem; background: #eee; color: #333; border: 1px solid #ccc; border-radius: 4px; cursor: pointer;">Copy</button>
+                  </label>
+                  <input type="text" id="Vinted SEO Title" name="Vinted SEO Title" value="{{ form.get('Vinted SEO Title', '') }}">
+                </div>
+
+                <div class="field">
+                   <label for="vinted_desc" style="display: flex; justify-content: space-between;">
+                     Description
+                     <button type="button" class="copy-btn" data-target="Description" style="padding: 2px 8px; font-size: 0.7rem; background: #eee; color: #333; border: 1px solid #ccc; border-radius: 4px; cursor: pointer;">Copy</button>
+                   </label>
+                   <textarea id="vinted_desc" readonly style="background: #f9f9f9; font-size: 0.9rem;">{{ form['Description'] }}</textarea>
+                </div>
+
+                <div class="grid-2">
+                  <div class="field">
+                    <label for="Vinted Brand" style="display: flex; justify-content: space-between;">
+                      Brand
+                      <button type="button" class="copy-btn" data-target="Vinted Brand" style="padding: 2px 8px; font-size: 0.7rem; background: #eee; color: #333; border: 1px solid #ccc; border-radius: 4px; cursor: pointer;">Copy</button>
+                    </label>
+                    <input type="text" id="Vinted Brand" name="Vinted Brand" value="{{ form.get('Vinted Brand', '') }}">
+                  </div>
+                  <div class="field">
+                    <label for="vinted_price" style="display: flex; justify-content: space-between;">
+                      Price
+                      <button type="button" class="copy-btn" data-target="Price" style="padding: 2px 8px; font-size: 0.7rem; background: #eee; color: #333; border: 1px solid #ccc; border-radius: 4px; cursor: pointer;">Copy</button>
+                    </label>
+                    <input type="text" id="vinted_price" readonly value="{{ form.get('Price', '0.00') }}" style="background: #f9f9f9;">
+                  </div>
+                </div>
+
+                <div class="grid-2">
+                  <div class="field">
+                    <label for="Vinted Condition">Condition</label>
+                    <select id="Vinted Condition" name="Vinted Condition">
+                      <option value="new_with_tags" {% if form.get('Vinted Condition') == 'new_with_tags' %}selected{% endif %}>New with tags</option>
+                      <option value="new_without_tags" {% if form.get('Vinted Condition') == 'new_without_tags' %}selected{% endif %}>New without tags</option>
+                      <option value="very_good" {% if form.get('Vinted Condition', 'very_good') == 'very_good' %}selected{% endif %}>Very good</option>
+                      <option value="good" {% if form.get('Vinted Condition') == 'good' %}selected{% endif %}>Good</option>
+                      <option value="satisfactory" {% if form.get('Vinted Condition') == 'satisfactory' %}selected{% endif %}>Satisfactory</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="Vinted Parcel Size">Parcel Size</label>
+                    <select id="Vinted Parcel Size" name="Vinted Parcel Size">
+                      <option value="Small" {% if form.get('Vinted Parcel Size') == 'Small' %}selected{% endif %}>Small (up to 500g)</option>
+                      <option value="Medium" {% if form.get('Vinted Parcel Size', 'Medium') == 'Medium' %}selected{% endif %}>Medium (up to 1kg)</option>
+                      <option value="Large" {% if form.get('Vinted Parcel Size') == 'Large' %}selected{% endif %}>Large (up to 2kg)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
             <div class="button-row" style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border); display: flex; gap: 12px;">
               <button type="submit" style="flex: 2;">Save Changes</button>
               <a class="button-link secondary" href="{{ url_for('items.manage_items', status=current_filter) }}" style="flex: 1; text-align: center;">Cancel</a>
@@ -1054,9 +1125,15 @@
         if (document.getElementById('Poshmark Size')) document.getElementById('Poshmark Size').value = posh.size || '';
         if (document.getElementById('Poshmark Style Tags')) document.getElementById('Poshmark Style Tags').value = (posh.style_tags || []).join(', ');
 
+        const vinted = pd.vinted || {};
+        if (document.getElementById('Vinted SEO Title')) document.getElementById('Vinted SEO Title').value = vinted.seo_title || '';
+        if (document.getElementById('Vinted Brand')) document.getElementById('Vinted Brand').value = vinted.brand || '';
+        if (document.getElementById('Vinted Condition')) document.getElementById('Vinted Condition').value = vinted.condition || 'very_good';
+        if (document.getElementById('Vinted Parcel Size')) document.getElementById('Vinted Parcel Size').value = vinted.parcel_size || 'Medium';
+
         aiOptionsModal.classList.remove('active');
         
-        if (pd.ebay || pd.etsy || pd.poshmark) {
+        if (pd.ebay || pd.etsy || pd.poshmark || pd.vinted) {
           const strategySelect = document.getElementById('ListingStrategy');
           if (strategySelect) {
               strategySelect.value = 'retail';
