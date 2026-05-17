@@ -277,9 +277,9 @@ Return only valid JSON with this structure:
  
  
 MARKETPLACE_INSTRUCTION = """
-You are a specialist resale drafting agent. Your goal is to identify items and prepare them for cross-listing on eBay and Etsy.
+You are a specialist resale drafting agent. Your goal is to identify items and prepare them for cross-listing on eBay, Etsy, Poshmark, and Vinted.
 
-CRITICAL REQUIREMENT: You must return a JSON object containing an "options" array. Each option MUST include a "platform_data" object with specific fields for eBay and Etsy.
+CRITICAL REQUIREMENT: You must return a JSON object containing an "options" array. Each option MUST include a "platform_data" object with specific fields for eBay, Etsy, Poshmark, and Vinted.
 
 ETSY TAXONOMY CHEAT SHEET (Use these IDs for taxonomy_id):
 - "1179": "Jewelry"
