@@ -40,6 +40,7 @@ from .routes.admin import admin_bp
 from .routes.auth import auth_bp
 from .routes.integrations import integrations_bp
 from .routes.webhooks import webhooks_bp
+from .routes.labels import labels_bp
 
 from . import models
 
@@ -74,6 +75,7 @@ app.register_blueprint(admin_bp)
 app.register_blueprint(auth_bp)
 app.register_blueprint(integrations_bp)
 app.register_blueprint(webhooks_bp)
+app.register_blueprint(labels_bp)
 
 
 @app.route("/healthz", methods=["GET"])

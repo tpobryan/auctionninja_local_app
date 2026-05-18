@@ -9,6 +9,7 @@ What it does:
 - saves approved items with the next sequential lot number
 - exports an InventoryManager-ready CSV when you are ready to publish lots
 - tracks lots by auction with statuses and export history when `DATABASE_URL` is configured
+- **Label Processor:** converts A4 Vinted PDF shipping labels to 4x6 thermal printer format
 
 ## Files created by the app
 - `data/auction_items.csv`
@@ -18,6 +19,16 @@ What it does:
 - temporary and saved image folders in `data/uploads/`
 
 ## Setup
+
+### Vinted Label Processor (iPhone Workflow)
+If you sell on Vinted and need to print their A4 PDF labels on a 4x6 thermal printer (like a Rollo):
+1. Open the Vinted app and download your shipping label.
+2. Tap the **Share** icon and select **Save to Files**.
+3. Open the Inventory Manager web app on your phone and tap **🖨️ Label Processor** in the top navigation menu.
+4. Upload the saved PDF. 
+5. The server will instantly crop and resize the label to exactly 4x6 inches and download it to your phone, ready to print!
+
+---
 
 Create and activate a virtual environment if you want:
 

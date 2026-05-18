@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vinted Label Processor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #fdfcf9;
+      --card: #ffffff;
+      --border: #e8e4db;
+      --text: #2c2f2d;
+      --muted: #6b716d;
+      --accent: #1e2d24;
+      --accent-hover: #2d4235;
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    .wrap {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 18px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.04);
+      margin-top: 20px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-family: 'Playfair Display', serif;
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: -0.01em;
+      text-align: center;
+    }
+
+    .sub {
+      margin: 0 0 24px;
+      color: var(--muted);
+      font-size: 1rem;
+      text-align: center;
+    }
+
+    .flash {
+      margin-bottom: 16px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid #fecaca;
+      background: #fdf2f2;
+      color: #991b1b;
+      font-size: 0.96rem;
+    }
+
+    .field {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    input[type="file"] {
+      width: 100%;
+      padding: 12px;
+      border: 2px dashed #cbd5e1;
+      border-radius: 10px;
+      background: #f8fafc;
+      font: inherit;
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    button,
+    .button-link {
+      appearance: none;
+      border: 0;
+      border-radius: 10px;
+      padding: 14px 18px;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      background: var(--accent);
+      color: white;
+      text-decoration: none;
+      display: inline-block;
+      width: 100%;
+      text-align: center;
+      font-size: 1.05rem;
+    }
+
+    button:hover,
+    .button-link:hover {
+      background: var(--accent-hover);
+    }
+
+    .secondary {
+      background: #e5e7eb;
+      color: #111827;
+    }
+
+    .secondary:hover {
+      background: #d1d5db;
+    }
+
+    .instruction-box {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 24px;
+    }
+
+    .instruction-box h3 {
+      margin: 0 0 8px;
+      color: #166534;
+      font-size: 1.05rem;
+    }
+
+    .instruction-box ol {
+      margin: 0;
+      padding-left: 20px;
+      color: #15803d;
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+
+    @media (max-width: 640px) {
+      .card {
+        padding: 18px;
+      }
+      h1 {
+        font-size: 1.6rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div style="background: var(--card); border-bottom: 1px solid var(--border); padding: 12px 0;">
+    <div style="max-width: 860px; margin: 0 auto; padding: 0 18px; display: flex; justify-content: flex-end; gap: 12px;">
+      <a class="button-link secondary" href="{{ url_for('main.index') }}" style="padding: 8px 14px; font-size: 0.9rem; width: auto;">Back to App</a>
+    </div>
+  </div>
+
+  <div class="wrap">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="flash" {% if category == 'success' %}style="background: #f0fdf4; border-color: #bbf7d0; color: #166534;"{% endif %}>{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <div class="card">
+      <h1>Label Processor</h1>
+      <p class="sub">Convert Vinted A4 PDF labels into 4x6 thermal printer format.</p>
+
+      <div class="instruction-box">
+        <h3>How to use on iPhone:</h3>
+        <ol>
+          <li>Open the Vinted app and download the shipping label.</li>
+          <li>Tap the <strong>Share</strong> icon and choose <strong>Save to Files</strong>.</li>
+          <li>Come to this page and upload that file.</li>
+          <li>You will instantly receive a 4x6 PDF ready to print on your Rollo!</li>
+        </ol>
+      </div>
+
+      <form action="{{ url_for('labels.upload_label') }}" method="post" enctype="multipart/form-data" id="uploadForm">
+        {{ csrf_input() }}
+        
+        <div class="field">
+          <label for="label_pdf">Select Vinted PDF Label</label>
+          <input type="file" id="label_pdf" name="label_pdf" accept=".pdf" required>
+        </div>
+
+        <button type="submit" id="submitBtn">Convert to 4x6</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('uploadForm').addEventListener('submit', function() {
+      const btn = document.getElementById('submitBtn');
+      btn.innerText = 'Processing...';
+      btn.style.opacity = '0.7';
+      btn.style.pointerEvents = 'none';
+      
+      // Reset button after 3 seconds so they can do another one
+      setTimeout(() => {
+        btn.innerText = 'Convert to 4x6';
+        btn.style.opacity = '1';
+        btn.style.pointerEvents = 'auto';
+        document.getElementById('uploadForm').reset();
+      }, 3000);
+    });
+  </script>
+</body>
+</html>

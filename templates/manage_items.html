@@ -308,6 +308,13 @@
   </style>
 </head>
 <body>
+  <div style="background: var(--card); border-bottom: 1px solid var(--border); padding: 12px 0; margin-bottom: 20px;">
+    <div style="max-width: 1100px; margin: 0 auto; padding: 0 20px; display: flex; justify-content: flex-end; gap: 12px; flex-wrap: wrap;">
+      <a class="button-link secondary" href="{{ url_for('labels.upload_label') }}" style="padding: 8px 14px; font-size: 0.9rem; background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd;">🖨️ Label Processor</a>
+      <a class="button-link secondary" href="{{ url_for('main.index') }}" style="padding: 8px 14px; font-size: 0.9rem;">Back to Upload</a>
+      <a class="button-link secondary" href="{{ url_for('main.dashboard') }}" style="padding: 8px 14px; font-size: 0.9rem;">Inventory Dashboard</a>
+    </div>
+  </div>
   <div class="wrap">
     <div class="card">
       <h1>Manage Inventory</h1>

@@ -50,6 +50,9 @@ class Settings(BaseSettings):
     DATA_DIR: Path = BASE_DIR / "data"
     UPLOADS_DIR: Path = BASE_DIR / "data" / "uploads"
     EXPORTS_DIR: Path = BASE_DIR / "data" / "exports"
+    LABELS_DIR: Path = BASE_DIR / "data" / "labels"
+    LABELS_INCOMING_DIR: Path = BASE_DIR / "data" / "labels" / "incoming"
+    LABELS_PROCESSED_DIR: Path = BASE_DIR / "data" / "labels" / "processed"
 
     model_config = SettingsConfigDict(
         env_file=str(BASE_DIR / ".env"),
