@@ -26,32 +26,33 @@ def process_vinted_label(input_path: str | Path, output_path: str | Path) -> boo
 
         # Get the first page
         page = doc[0]
+        rect = page.rect
         
-        # A standard A4 is 595 x 842 points.
-        # A standard 4x6 label is 288 x 432 points.
-        # Usually Vinted labels are positioned in the top left or top center.
-        # We will crop a rectangle that safely encompasses a standard shipping label in the top left.
-        # X0, Y0, X1, Y1. We'll use 400 x 600 points (about 5.5 x 8.3 inches) to be safe and ensure the barcode isn't cut off.
-        # The Rollo printer driver will scale this down to 4x6.
-        # For a more exact 4x6 aspect ratio: 400 x 600 is exactly 4:6.
+        # A standard A4 is 595 x 842 points (Portrait)
+        # Vinted labels are typically printed sideways on the top half of a portrait A4 sheet.
+        if rect.width < rect.height:
+            # Portrait A4: Crop the top half
+            # This yields a Landscape rectangle (595 x 421)
+            crop_rect = fitz.Rect(0, 0, rect.width, rect.height / 2.0)
+            page.set_cropbox(crop_rect)
+            # Rotate 90 degrees to make it Portrait (421 x 595) for thermal printers
+            page.set_rotation(90)
+        else:
+            # Landscape A4: Crop the left half
+            # This yields a Portrait rectangle (421 x 595)
+            crop_rect = fitz.Rect(0, 0, rect.width / 2.0, rect.height)
+            page.set_cropbox(crop_rect)
+            # Already portrait, no rotation needed
         
-        crop_rect = fitz.Rect(0, 0, 400, 600)
-        
-        # Ensure we don't crop larger than the page itself
-        page_rect = page.rect
-        crop_rect.intersect(page_rect)
-        
-        # Set the new cropbox
-        page.set_cropbox(crop_rect)
-        
-        # Save the new PDF with just the cropped page
-        # We create a new document to ensure only the single cropped page is saved
+        # Save the new PDF with just the cropped and rotated page
         out_doc = fitz.open()
         out_doc.insert_pdf(doc, from_page=0, to_page=0)
         
-        # Apply the cropbox again in the new doc just in case
+        # Apply crop and rotation again just to be completely safe
         out_doc[0].set_cropbox(crop_rect)
-        
+        if rect.width < rect.height:
+            out_doc[0].set_rotation(90)
+            
         out_doc.save(output_path, garbage=4, deflate=True)
         
         out_doc.close()
