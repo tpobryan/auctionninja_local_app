@@ -14,11 +14,13 @@ os.makedirs(settings.LABELS_PROCESSED_DIR, exist_ok=True)
 @labels_bp.route("/upload-label", methods=["GET", "POST"])
 def upload_label():
     if request.method == "POST":
-        if "label_pdf" not in request.files:
+        if "label" in request.files:
+            file = request.files["label"]
+        elif "label_pdf" in request.files:
+            file = request.files["label_pdf"]
+        else:
             flash("No file part in the request.", "error")
             return redirect(request.url)
-            
-        file = request.files["label_pdf"]
         
         if file.filename == "":
             flash("No file selected.", "error")
