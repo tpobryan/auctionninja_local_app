@@ -14,21 +14,36 @@ os.makedirs(settings.LABELS_PROCESSED_DIR, exist_ok=True)
 @labels_bp.route("/upload-label", methods=["GET", "POST"])
 def upload_label():
     if request.method == "POST":
+        print(f"Content-Type: {request.content_type}")
+        print(f"Request Form Keys: {list(request.form.keys())}")
+        print(f"Request Files Keys: {list(request.files.keys())}")
+        
         if "label" in request.files:
             file = request.files["label"]
         elif "label_pdf" in request.files:
             file = request.files["label_pdf"]
         else:
-            flash("No file part in the request.", "error")
-            return redirect(request.url)
+            # Check if it was sent as raw data
+            if request.content_length and request.content_type == "application/pdf":
+                return "Error: File sent as raw body, but expected multipart/form-data 'label' field.", 400
+            if request.accept_mimetypes.accept_html:
+                flash("No file part in the request.", "error")
+                return redirect(request.url)
+            return "Error: No file part in the request. Keys found: " + str(list(request.files.keys())), 400
         
         if file.filename == "":
-            flash("No file selected.", "error")
-            return redirect(request.url)
+            if request.accept_mimetypes.accept_html:
+                flash("No file selected.", "error")
+                return redirect(request.url)
+            # Shortcuts might send files without a filename? 
+            # If so, let's just assign a fake filename so it proceeds!
+            file.filename = "shortcut_upload.pdf"
             
         if not file.filename.lower().endswith(".pdf"):
-            flash("Only PDF files are supported.", "error")
-            return redirect(request.url)
+            if request.accept_mimetypes.accept_html:
+                flash("Only PDF files are supported.", "error")
+                return redirect(request.url)
+            return "Error: Only PDF files are supported.", 400
             
         try:
             # Secure filename and add uuid to avoid collisions
@@ -55,11 +70,15 @@ def upload_label():
                     mimetype="application/pdf"
                 )
             else:
-                flash("Failed to process the label. Please ensure it is a valid PDF.", "error")
-                return redirect(request.url)
+                if request.accept_mimetypes.accept_html:
+                    flash("Failed to process the label. Please ensure it is a valid PDF.", "error")
+                    return redirect(request.url)
+                return "Error: Failed to process the label. Please ensure it is a valid PDF.", 400
                 
         except Exception as e:
-            flash(f"An error occurred: {str(e)}", "error")
-            return redirect(request.url)
+            if request.accept_mimetypes.accept_html:
+                flash(f"An error occurred: {str(e)}", "error")
+                return redirect(request.url)
+            return f"Error: An exception occurred: {str(e)}", 500
             
     return render_template("upload_label.html")
