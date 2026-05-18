@@ -18,46 +18,60 @@ def upload_label():
         print(f"Request Form Keys: {list(request.form.keys())}")
         print(f"Request Files Keys: {list(request.files.keys())}")
         
+        file = None
+        raw_data = None
+        
         if "label" in request.files:
             file = request.files["label"]
         elif "label_pdf" in request.files:
             file = request.files["label_pdf"]
-        else:
-            # Check if it was sent as raw data
-            if request.content_length and request.content_type == "application/pdf":
-                return "Error: File sent as raw body, but expected multipart/form-data 'label' field.", 400
-            if request.accept_mimetypes.accept_html:
-                flash("No file part in the request.", "error")
-                return redirect(request.url)
-            return "Error: No file part in the request. Keys found: " + str(list(request.files.keys())), 400
-        
-        if file.filename == "":
-            if request.accept_mimetypes.accept_html:
-                flash("No file selected.", "error")
-                return redirect(request.url)
-            # Shortcuts might send files without a filename? 
-            # If so, let's just assign a fake filename so it proceeds!
-            file.filename = "shortcut_upload.pdf"
+        elif len(request.files) == 1:
+            file = next(iter(request.files.values()))
             
-        if not file.filename.lower().endswith(".pdf"):
-            if request.accept_mimetypes.accept_html:
-                flash("Only PDF files are supported.", "error")
-                return redirect(request.url)
-            return "Error: Only PDF files are supported.", 400
+        if not file:
+            # Check if it was sent as raw data (some Shortcuts configs do this by mistake)
+            if request.data and len(request.data) > 100: # ensure it's not empty
+                # We have raw data! We'll bypass the file object.
+                raw_data = request.data
+            else:
+                error_msg = f"Error: No file part and no raw body in the request. Form keys sent: {list(request.form.keys())}. Files sent: {list(request.files.keys())}"
+                return error_msg, 400
+        
+        if file:
+            if file.filename == "":
+                if request.accept_mimetypes.accept_html:
+                    flash("No file selected.", "error")
+                    return redirect(request.url)
+                # Shortcuts might send files without a filename? 
+                file.filename = "shortcut_upload.pdf"
+                
+            if not file.filename.lower().endswith(".pdf"):
+                if request.accept_mimetypes.accept_html:
+                    flash("Only PDF files are supported.", "error")
+                    return redirect(request.url)
+                return "Error: Only PDF files are supported.", 400
             
         try:
-            # Secure filename and add uuid to avoid collisions
-            safe_name = secure_filename(file.filename)
             unique_id = str(uuid.uuid4())[:8]
-            base_name = os.path.splitext(safe_name)[0]
             
-            in_filename = f"{base_name}_{unique_id}.pdf"
+            if file:
+                safe_name = secure_filename(file.filename)
+                base_name = os.path.splitext(safe_name)[0]
+                in_filename = f"{base_name}_{unique_id}.pdf"
+            else:
+                base_name = "raw_upload"
+                in_filename = f"{base_name}_{unique_id}.pdf"
+                
             out_filename = f"{base_name}_4x6_{unique_id}.pdf"
             
             in_path = settings.LABELS_INCOMING_DIR / in_filename
             out_path = settings.LABELS_PROCESSED_DIR / out_filename
             
-            file.save(in_path)
+            if file:
+                file.save(in_path)
+            elif raw_data:
+                with open(in_path, "wb") as f:
+                    f.write(raw_data)
             
             success = process_vinted_label(in_path, out_path)
             
