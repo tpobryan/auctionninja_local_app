@@ -28,30 +28,44 @@ def process_vinted_label(input_path: str | Path, output_path: str | Path) -> boo
         page = doc[0]
         rect = page.rect
         
-        # A standard A4 is 595 x 842 points (Portrait)
-        # Vinted labels are typically printed sideways on the top half of a portrait A4 sheet.
-        if rect.width < rect.height:
-            # Portrait A4: Crop the top half
-            # This yields a Landscape rectangle (595 x 421)
-            crop_rect = fitz.Rect(0, 0, rect.width, rect.height / 2.0)
-            page.set_cropbox(crop_rect)
-            # Rotate 90 degrees to make it Portrait (421 x 595) for thermal printers
-            page.set_rotation(90)
-        else:
-            # Landscape A4: Crop the left half
-            # This yields a Portrait rectangle (421 x 595)
-            crop_rect = fitz.Rect(0, 0, rect.width / 2.0, rect.height)
-            page.set_cropbox(crop_rect)
-            # Already portrait, no rotation needed
+        # Strategy: Find the largest image in the PDF (which is almost always the shipping label itself)
+        # and crop exactly to its bounding box, adding a small margin.
+        images = page.get_image_info()
+        crop_rect = None
         
-        # Save the new PDF with just the cropped and rotated page
+        if images:
+            # Find the largest image by area
+            largest_img = max(images, key=lambda i: (i['bbox'][2] - i['bbox'][0]) * (i['bbox'][3] - i['bbox'][1]))
+            area = (largest_img['bbox'][2] - largest_img['bbox'][0]) * (largest_img['bbox'][3] - largest_img['bbox'][1])
+            
+            # If the image is reasonably large (e.g., > 10000 sq points), it's the label
+            if area > 10000:
+                crop_rect = fitz.Rect(largest_img['bbox'])
+                # Add a 10-point safe margin around the label
+                crop_rect = crop_rect + (-10, -10, 10, 10)
+                # Ensure we don't expand outside the physical page
+                crop_rect.intersect(rect)
+                
+        # Fallback if no large images are found: Crop the top half or top-left
+        if not crop_rect:
+            if rect.width < rect.height:
+                crop_rect = fitz.Rect(0, 0, rect.width, rect.height / 2.0)
+            else:
+                crop_rect = fitz.Rect(0, 0, rect.width / 2.0, rect.height)
+                
+        # Save the new PDF with just the cropped page
         out_doc = fitz.open()
         out_doc.insert_pdf(doc, from_page=0, to_page=0)
         
-        # Apply crop and rotation again just to be completely safe
+        # Apply the cropbox
         out_doc[0].set_cropbox(crop_rect)
-        if rect.width < rect.height:
+        
+        # Thermal printers expect a Portrait label (Width < Height).
+        # If the cropped label is Landscape (Width > Height), rotate it 90 degrees.
+        if crop_rect.width > crop_rect.height:
             out_doc[0].set_rotation(90)
+        else:
+            out_doc[0].set_rotation(0)
             
         out_doc.save(output_path, garbage=4, deflate=True)
         
