@@ -53,19 +53,17 @@ def process_vinted_label(input_path: str | Path, output_path: str | Path) -> boo
             else:
                 crop_rect = fitz.Rect(0, 0, rect.width / 2.0, rect.height)
                 
-        # Save the new PDF with just the cropped page
+        # Create a STRICT 4x6 output document (288 x 432 points)
+        # This prevents iOS AirPrint from defaulting to "Envelope" due to weird custom crop dimensions
         out_doc = fitz.open()
-        out_doc.insert_pdf(doc, from_page=0, to_page=0)
-        
-        # Apply the cropbox
-        out_doc[0].set_cropbox(crop_rect)
+        out_page = out_doc.new_page(width=288, height=432)
         
         # Thermal printers expect a Portrait label (Width < Height).
         # If the cropped label is Landscape (Width > Height), rotate it 90 degrees.
-        if crop_rect.width > crop_rect.height:
-            out_doc[0].set_rotation(90)
-        else:
-            out_doc[0].set_rotation(0)
+        rotation = 90 if crop_rect.width > crop_rect.height else 0
+        
+        # Paint the cropped section of the original PDF onto our perfectly sized 4x6 page
+        out_page.show_pdf_page(out_page.rect, doc, 0, clip=crop_rect, rotate=rotation)
             
         out_doc.save(output_path, garbage=4, deflate=True)
         
