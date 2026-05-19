@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, request, flash, send_file, redirect, url_for
 import os
+import io
 import uuid
 from werkzeug.utils import secure_filename
 from ..config import settings
@@ -76,9 +77,20 @@ def upload_label():
             success = process_vinted_label(in_path, out_path)
             
             if success and os.path.exists(out_path):
-                # Return the processed file to the user
+                # Read the processed file into memory
+                with open(out_path, "rb") as f:
+                    file_data = io.BytesIO(f.read())
+                
+                # Delete the files from disk to save space and protect privacy
+                try:
+                    os.remove(in_path)
+                    os.remove(out_path)
+                except Exception as cleanup_err:
+                    print(f"Warning: Failed to delete temporary label files: {cleanup_err}")
+                
+                # Return the processed file to the user from memory
                 return send_file(
-                    out_path,
+                    file_data,
                     as_attachment=True,
                     download_name=f"{base_name}_4x6.pdf",
                     mimetype="application/pdf"
