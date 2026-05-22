@@ -17,6 +17,7 @@ from ..database import (
     restore_removed_item,
     bulk_restore_items,
     set_items_status,
+    set_items_listing_strategy,
     current_auction_number_for_upload,
     reserve_next_auction_photo_index,
     record_ftp_upload,
@@ -247,6 +248,12 @@ def bulk_update_items():
             f"Moved {moved} selected lot(s) to auction {target_auction_id}. "
             "Their publish state was reset for review in the new auction."
         )
+    elif action == "strategy_auction":
+        changed = set_items_listing_strategy(selected_lots, "auction")
+        flash(f"Set {changed} selected lot(s) to the AuctionNinja Path.")
+    elif action == "strategy_retail":
+        changed = set_items_listing_strategy(selected_lots, "retail")
+        flash(f"Set {changed} selected lot(s) to the Retail Marketplace Path.")
     elif action == "upload_ftp":
         flash("Bulk FTP feature runs here.")
     else:

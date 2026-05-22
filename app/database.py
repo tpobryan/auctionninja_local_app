@@ -1001,6 +1001,7 @@ def initialize_platform_status(lot_number: int, platforms: list[str]) -> None:
     ensure_item_store_ready()
     connection, dialect = connect_item_store()
     assert connection is not None
+    current_auction_id = get_current_auction_id()
 
     try:
         cursor = connection.cursor()
@@ -1008,23 +1009,23 @@ def initialize_platform_status(lot_number: int, platforms: list[str]) -> None:
             if dialect == "sqlite":
                 cursor.execute(
                     """
-                    INSERT INTO item_platform_status (lot_number, platform_id, status, updated_at)
-                    VALUES (?, ?, ?, CURRENT_TIMESTAMP)
-                    ON CONFLICT(lot_number, platform_id) DO UPDATE SET
+                    INSERT INTO item_platform_status (auction_id, lot_number, platform_id, status, updated_at)
+                    VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+                    ON CONFLICT(auction_id, lot_number, platform_id) DO UPDATE SET
                         status=excluded.status,
                         updated_at=CURRENT_TIMESTAMP
                     """,
-                    (lot_number, platform_id, "pending")
+                    (current_auction_id, lot_number, platform_id, "pending")
                 )
             else:
                 cursor.execute(
                     """
-                    INSERT INTO item_platform_status (lot_number, platform_id, status)
-                    VALUES (%s, %s, %s)
+                    INSERT INTO item_platform_status (auction_id, lot_number, platform_id, status)
+                    VALUES (%s, %s, %s, %s)
                     ON DUPLICATE KEY UPDATE
                         status=VALUES(status)
                     """,
-                    (lot_number, platform_id, "pending")
+                    (current_auction_id, lot_number, platform_id, "pending")
                 )
         connection.commit()
     finally:
@@ -1356,17 +1357,23 @@ def fetch_platform_statuses_for_lots(lot_numbers: list[int]) -> dict[int, list[d
     ensure_item_store_ready()
     connection, dialect = connect_item_store()
     assert connection is not None
+    current_auction_id = get_current_auction_id()
     
     try:
         cursor = connection.cursor()
         placeholders = ", ".join(["?"] * len(lot_numbers)) if dialect == "sqlite" else ", ".join(["%s"] * len(lot_numbers))
+        
+        # Include current_auction_id in the query parameters
+        params = [current_auction_id] + list(lot_numbers)
+        
         cursor.execute(
             f"""
             SELECT lot_number, platform_id, status, remote_id, remote_url, last_error, last_error_code, stage, attempt_count, last_attempt_at, published_at, updated_at
             FROM item_platform_status
-            WHERE lot_number IN ({placeholders})
+            WHERE auction_id = {("?" if dialect == "sqlite" else "%s")}
+              AND lot_number IN ({placeholders})
             """,
-            tuple(lot_numbers)
+            tuple(params)
         )
         rows = cursor.fetchall()
         
@@ -1809,6 +1816,44 @@ def set_items_status(lot_numbers: list[int], target_status: str) -> int:
                 WHERE lot_number IN ({placeholders}) AND auction_id = %s
                 """,
                 (target_status, *lot_numbers, current_auction_id),
+            )
+        connection.commit()
+        return int(cursor.rowcount)
+    finally:
+        connection.close()
+
+def set_items_listing_strategy(lot_numbers: list[int], target_strategy: str) -> int:
+    if not lot_numbers:
+        return 0
+
+    ensure_item_store_ready()
+    connection, dialect = connect_item_store()
+    assert connection is not None
+
+    try:
+        cursor = connection.cursor()
+        placeholders = ", ".join(["?"] * len(lot_numbers)) if dialect == "sqlite" else ", ".join(["%s"] * len(lot_numbers))
+        current_auction_id = get_current_auction_id()
+        if dialect == "sqlite":
+            cursor.execute(
+                f"""
+                UPDATE auction_items
+                SET
+                    listing_strategy = ?,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE lot_number IN ({placeholders}) AND auction_id = ?
+                """,
+                (target_strategy, *lot_numbers, current_auction_id),
+            )
+        else:
+            cursor.execute(
+                f"""
+                UPDATE auction_items
+                SET
+                    listing_strategy = %s
+                WHERE lot_number IN ({placeholders}) AND auction_id = %s
+                """,
+                (target_strategy, *lot_numbers, current_auction_id),
             )
         connection.commit()
         return int(cursor.rowcount)
