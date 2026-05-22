@@ -420,9 +420,10 @@ def _parse_model_json(text: str) -> dict[str, Any]:
     raise ValueError(f"Could not parse model response as JSON: {raw}")
 
 
-def _build_image_content(image_paths: list[Path]) -> list[dict[str, Any]]:
+def _build_image_content(image_paths: list[Path | str]) -> list[dict[str, Any]]:
     content: list[dict[str, Any]] = []
-    for path in image_paths:
+    for path_or_str in image_paths:
+        path = Path(path_or_str) if isinstance(path_or_str, str) else path_or_str
         mime = _guess_mime_type(path)
         with path.open("rb") as f:
             b64 = base64.b64encode(f.read()).decode("utf-8")
@@ -491,7 +492,7 @@ class InventoryManagerGenerator:
 
     def generate_options(
         self,
-        image_paths: list[Path],
+        image_paths: list[Path | str],
         seller_notes: str = "",
         strategy: str = "auction",
     ) -> dict[str, list[dict[str, str | int]]]:
