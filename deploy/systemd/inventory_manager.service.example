@@ -9,9 +9,11 @@ Group=www-data
 WorkingDirectory=/opt/inventory_manager
 Environment=PATH=/opt/inventory_manager/venv/bin
 EnvironmentFile=/opt/inventory_manager/.env
+ExecStartPre=-/bin/rm -f /opt/inventory_manager/inventory_manager.sock
 ExecStart=/opt/inventory_manager/venv/bin/gunicorn \
     --workers 3 \
     --bind unix:/opt/inventory_manager/inventory_manager.sock \
+    --umask 007 \
     app:app
 Restart=always
 RestartSec=5

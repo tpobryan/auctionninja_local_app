@@ -56,6 +56,9 @@ flask db upgrade
 sudo chown -R tobryan:www-data .
 sudo chmod -R 775 data
 
+# Remove any old socket file that might cause permission errors
+sudo rm -f inventory_manager.sock
+
 sudo systemctl restart ${SERVICE_NAME}
 sudo systemctl status ${SERVICE_NAME} --no-pager
 EOF
