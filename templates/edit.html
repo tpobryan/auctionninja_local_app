@@ -788,6 +788,8 @@
                 <div class="option-grid">
                   <div><span class="option-label">Category:</span> {{ option.category }}</div>
                   <div><span class="option-label">Condition:</span> {{ option.condition_summary }}</div>
+                  <div><span class="option-label">Low Estimate:</span> {% if option.low_estimate %}${{ option.low_estimate }}{% else %}N/A{% endif %}</div>
+                  <div><span class="option-label">High Estimate:</span> {% if option.high_estimate %}${{ option.high_estimate }}{% else %}N/A{% endif %}</div>
                   <div><span class="option-label">Keywords:</span> {{ option.keywords }}</div>
                 </div>
               </div>
