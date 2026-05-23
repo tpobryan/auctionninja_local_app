@@ -569,6 +569,17 @@
                 </div>
               </div>
 
+              <div class="grid-2" style="margin-top: 12px;">
+                <div class="field">
+                  <label for="Reference #">Reference #</label>
+                  <input type="text" id="Reference #" name="Reference #" value="{{ form.get('Reference #', '') }}">
+                </div>
+                <div class="field">
+                  <label for="Consigner #">Consigner #</label>
+                  <input type="text" id="Consigner #" name="Consigner #" value="{{ form.get('Consigner #', '') }}">
+                </div>
+              </div>
+
               <div class="field">
                 <label for="Item Notes">Private Internal Notes</label>
                 <textarea id="Item Notes" name="Item Notes" rows="3">{{ form['Item Notes'] }}</textarea>
@@ -598,6 +609,15 @@
                 <div class="field">
                   <label for="High Estimate ($)">High Estimate ($)</label>
                   <input type="text" id="High Estimate ($)" name="High Estimate ($)" value="{{ form['High Estimate ($)'] }}">
+                </div>
+              </div>
+
+              <div class="field">
+                <label>Dimensions</label>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+                  <input type="text" id="Dimensions - Length" name="Dimensions - Length" value="{{ form.get('Dimensions - Length', '') }}" placeholder="Length">
+                  <input type="text" id="Dimensions - Depth" name="Dimensions - Depth" value="{{ form.get('Dimensions - Depth', '') }}" placeholder="Depth">
+                  <input type="text" id="Dimensions - Height" name="Dimensions - Height" value="{{ form.get('Dimensions - Height', '') }}" placeholder="Height">
                 </div>
               </div>
 

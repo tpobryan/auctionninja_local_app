@@ -227,6 +227,8 @@ Softscaping (Trees, Plants, & Shrubs)
 Comic Books
 Pet Supplies & Accessories
 - condition_summary: short neutral condition note based on visible evidence and seller notes
+- low_estimate: estimated low resale value of the item in whole dollars (e.g. 10)
+- high_estimate: estimated high resale value of the item in whole dollars (e.g. 20). If uncertain, provide a reasonable guess.
 - keywords: 10-15 comma-separated search phrases
 
 When identification is highly certain (e.g., clear marks, unmistakable form, or confirmed by seller notes), return exactly ONE high-quality option.
@@ -246,6 +248,8 @@ Return only valid JSON with this structure:
       "description": "",
       "category": "",
       "condition_summary": "",
+      "low_estimate": "",
+      "high_estimate": "",
       "keywords": ""
     },
     {
@@ -258,6 +262,8 @@ Return only valid JSON with this structure:
       "description": "",
       "category": "",
       "condition_summary": "",
+      "low_estimate": "",
+      "high_estimate": "",
       "keywords": ""
     },
     {
@@ -270,6 +276,8 @@ Return only valid JSON with this structure:
       "description": "",
       "category": "",
       "condition_summary": "",
+      "low_estimate": "",
+      "high_estimate": "",
       "keywords": ""
     }
   ]
@@ -310,6 +318,8 @@ REQUIRED JSON STRUCTURE:
       "description": "Base description",
       "category": "Inventory category",
       "condition_summary": "Condition notes",
+      "low_estimate": "Estimated low resale value in whole dollars",
+      "high_estimate": "Estimated high resale value in whole dollars",
       "keywords": "General keywords",
       "platform_data": {
         "ebay": {
@@ -449,6 +459,8 @@ def _normalize_option(opt: dict[str, Any], rank: int) -> dict[str, Any]:
         "description": str(opt.get("description", "")).strip(),
         "category": str(opt.get("category", "Other")).strip() or "Other",
         "condition_summary": str(opt.get("condition_summary", "")).strip(),
+        "low_estimate": str(opt.get("low_estimate", "")).strip(),
+        "high_estimate": str(opt.get("high_estimate", "")).strip(),
         "keywords": str(opt.get("keywords", "")).strip(),
         "platform_data": opt.get("platform_data", {})
     }
@@ -465,6 +477,8 @@ def _blank_option(rank: int) -> dict[str, str | int]:
         "description": "",
         "category": "Other",
         "condition_summary": "",
+        "low_estimate": "",
+        "high_estimate": "",
         "keywords": "",
         "platform_data": {}
     }
@@ -575,6 +589,8 @@ Return only valid JSON.
     description: {current_option.get("description", "").strip()}
     category: {current_option.get("category", "").strip()}
     condition_summary: {current_option.get("condition_summary", "").strip()}
+    low_estimate: {current_option.get("low_estimate", "").strip()}
+    high_estimate: {current_option.get("high_estimate", "").strip()}
     keywords: {current_option.get("keywords", "").strip()}
 
     Seller notes:
@@ -598,6 +614,8 @@ Return only valid JSON.
     description
     category
     condition_summary
+    low_estimate
+    high_estimate
     keywords
     """.strip()
 
@@ -625,6 +643,8 @@ Return only valid JSON.
             "description": current_option.get("description", ""),
             "category": current_option.get("category", "Other"),
             "condition_summary": current_option.get("condition_summary", ""),
+            "low_estimate": current_option.get("low_estimate", ""),
+            "high_estimate": current_option.get("high_estimate", ""),
             "keywords": current_option.get("keywords", ""),
         }.items():
             if not str(revised.get(key, "")).strip():

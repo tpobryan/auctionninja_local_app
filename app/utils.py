@@ -263,6 +263,8 @@ def options_from_request() -> list[dict]:
                 "description": request.form.get(f"option_{i}_description", "").strip(),
                 "category": request.form.get(f"option_{i}_category", "").strip() or "Other",
                 "condition_summary": request.form.get(f"option_{i}_condition_summary", "").strip(),
+                "low_estimate": request.form.get(f"option_{i}_low_estimate", "").strip(),
+                "high_estimate": request.form.get(f"option_{i}_high_estimate", "").strip(),
                 "keywords": request.form.get(f"option_{i}_keywords", "").strip(),
                 "platform_data": json.loads(request.form.get(f"option_{i}_platform_data", "{}")),
             }
@@ -327,6 +329,8 @@ def form_from_option(option: dict, seller_notes: str = "", strategy: str = "auct
     form["Title"] = str(option.get("title", "")).strip()
     form["Description"] = str(option.get("description", "")).strip()
     form["Condition Summary"] = str(option.get("condition_summary", "")).strip()
+    form["Low Estimate ($)"] = str(option.get("low_estimate", "")).strip()
+    form["High Estimate ($)"] = str(option.get("high_estimate", "")).strip()
     form["Keywords"] = str(option.get("keywords", "")).strip()
     form["Category"] = str(option.get("category", "Other")).strip() or "Other"
     form["Item Notes"] = seller_notes
