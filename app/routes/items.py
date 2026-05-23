@@ -87,6 +87,27 @@ def edit_saved_item(lot_number: int):
     except Exception as exc:
         current_app.logger.warning("[Items] Failed to fetch eBay policies: %s", exc)
 
+    current_filter = normalize_manage_filter(request.args.get("status", "active"))
+    
+    # Calculate Pagination Logic
+    all_view_items = fetch_manage_items(current_filter)
+    current_strategy = item.get("listing_strategy", "auction")
+    
+    # Filter the loop to only include items of the same strategy
+    loop_lots = [int(i["lot_number"]) for i in all_view_items if i.get("listing_strategy", "auction") == current_strategy]
+    
+    prev_lot = None
+    next_lot = None
+    current_index = 0
+    total_lots = len(loop_lots)
+    
+    if lot_number in loop_lots:
+        current_index = loop_lots.index(lot_number) + 1
+        if current_index > 1:
+            prev_lot = loop_lots[current_index - 2]
+        if current_index < total_lots:
+            next_lot = loop_lots[current_index]
+
     return render_template(
         "saved_item_edit.html",
         item=item,
@@ -94,10 +115,14 @@ def edit_saved_item(lot_number: int):
         categories=DEFAULT_CATEGORIES,
         image_files=[p.name for p in saved_files],
         image_url_prefix=f"/uploads/{image_folder}/" if image_folder else "",
-        current_filter=normalize_manage_filter(request.args.get("status", "active")),
+        current_filter=current_filter,
         platform_statuses=platform_statuses,
         etsy_shipping_profiles=etsy_shipping_profiles,
         ebay_policies=ebay_policies,
+        prev_lot=prev_lot,
+        next_lot=next_lot,
+        current_index=current_index,
+        total_lots=total_lots,
     )
 
 @items_bp.route("/items/<int:lot_number>/update", methods=["POST"])
@@ -174,6 +199,13 @@ def update_saved_item(lot_number: int):
         flash(f"Updated lot {lot_number}. Status changed to needs_update so it can be re-exported.")
     else:
         flash(f"Updated lot {lot_number}.")
+        
+    submit_action = request.form.get("submit_action", "save")
+    if submit_action == "save_and_next":
+        next_lot = request.form.get("next_lot")
+        if next_lot and next_lot.isdigit():
+            return redirect(url_for("items.edit_saved_item", lot_number=int(next_lot), status=current_filter))
+            
     return redirect(url_for("items.edit_saved_item", lot_number=lot_number, status=current_filter))
 
 @items_bp.route("/items/<int:lot_number>/remove", methods=["POST"])
