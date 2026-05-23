@@ -234,8 +234,6 @@ def choose_option():
 
         current_form = form_from_request(seller_notes=seller_notes)
         for key in [
-            "Low Estimate ($)",
-            "High Estimate ($)",
             "Dimensions - Length",
             "Dimensions - Depth",
             "Dimensions - Height",
@@ -245,6 +243,13 @@ def choose_option():
             "Shipping Available",
         ]:
             form[key] = current_form.get(key, "")
+            
+        # For estimates, only preserve the user's manual input if they actually typed something,
+        # otherwise keep the AI's generated estimate.
+        for key in ["Low Estimate ($)", "High Estimate ($)"]:
+            manual_val = current_form.get(key, "").strip()
+            if manual_val:
+                form[key] = manual_val
 
     return render_edit_page(
         temp_id=temp_id,
