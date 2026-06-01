@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import base64
 from pathlib import Path
 from typing import Any, Dict, List
 
-import google.generativeai as genai
-from PIL import Image
+from google import genai
+from google.genai import types
 
 from ..config import settings
 from .base import AIService
@@ -19,8 +20,8 @@ from .openai import MASTER_INSTRUCTION, MARKETPLACE_INSTRUCTION
 
 class GeminiClient(AIService):
     def __init__(self, api_key: str | None = None, model: str | None = None) -> None:
-        genai.configure(api_key=api_key or settings.GEMINI_API_KEY)
-        self.model = genai.GenerativeModel(model or "gemini-1.5-flash")
+        self.client = genai.Client(api_key=api_key or settings.GEMINI_API_KEY)
+        self.model_name = model or "gemini-2.0-flash"
 
     def generate_options(
         self,
@@ -56,13 +57,24 @@ Prefer practical resale phrasing.
 Return only valid JSON.
 """.strip()
 
-        content = [prompt]
+        parts: list[Any] = [prompt]
         for path in image_paths:
             path = Path(path)
-            img = Image.open(path)
-            content.append(img)
+            mime_type = "image/jpeg"
+            suffix = path.suffix.lower()
+            if suffix == ".png":
+                mime_type = "image/png"
+            elif suffix == ".webp":
+                mime_type = "image/webp"
+            elif suffix == ".gif":
+                mime_type = "image/gif"
+            image_bytes = path.read_bytes()
+            parts.append(types.Part.from_bytes(data=image_bytes, mime_type=mime_type))
 
-        response = self.model.generate_content(content)
+        response = self.client.models.generate_content(
+            model=self.model_name,
+            contents=parts,
+        )
 
         raw_content = response.text
         data = parse_model_json(raw_content)

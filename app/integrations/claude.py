@@ -21,7 +21,7 @@ from .openai import MASTER_INSTRUCTION, MARKETPLACE_INSTRUCTION
 class ClaudeClient(AIService):
     def __init__(self, api_key: str | None = None, model: str | None = None) -> None:
         self.client = anthropic.Anthropic(api_key=api_key or settings.CLAUDE_API_KEY)
-        self.model = model or "claude-3-opus-20240229"
+        self.model = model or "claude-opus-4-5"
 
     def generate_options(
         self,
