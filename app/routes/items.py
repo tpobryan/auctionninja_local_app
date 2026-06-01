@@ -333,7 +333,7 @@ def edit_saved_photo():
         return {"success": False, "error": str(exc)}, 500
 @items_bp.route("/api/items/<int:lot_number>/reanalyze", methods=["POST"])
 def reanalyze_item(lot_number: int):
-    from ..inventory_manager_generator import InventoryManagerGenerator
+    from ..services.ai_service_factory import get_ai_services
     
     item = fetch_saved_item(lot_number)
     if not item:
@@ -348,15 +348,24 @@ def reanalyze_item(lot_number: int):
     seller_notes = item.get("item_notes", "") or item.get("description", "")
     strategy = request.form.get("strategy", "retail")
     
-    generator = InventoryManagerGenerator()
     try:
-        result = generator.generate_options(
-            saved_files,
-            seller_notes=seller_notes,
-            strategy=strategy
-        )
-        options = result.get("options", [])
-        return {"success": True, "options": options}
+        ai_services = get_ai_services()
+        if not ai_services:
+            return {"success": False, "error": "No AI services are configured."}, 500
+
+        all_options = []
+        for service in ai_services:
+            try:
+                ai_data = service.generate_options(saved_files, seller_notes=seller_notes, strategy=strategy)
+                options = ai_data.get("options", [])
+                for option in options:
+                    option["provider"] = service.name
+                all_options.extend(options)
+            except Exception as exc:
+                current_app.logger.exception(f"AI re-analysis failed for {service.name}")
+                # Don't fail the whole request, just log the error
+        
+        return {"success": True, "options": all_options}
     except Exception as exc:
         current_app.logger.exception("AI re-analysis failed")
         return {"success": False, "error": str(exc)}, 500

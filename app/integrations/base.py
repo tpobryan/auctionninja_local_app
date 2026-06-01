@@ -1,49 +1,43 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict
+from pathlib import Path
+from typing import Any, Dict, List
+
 
 class PlatformIntegration(ABC):
-    """
-    Abstract base class for all platform integrations (eBay, Etsy, etc.)
-    """
-    
+    """Abstract base class for marketplace platform integrations (eBay, Etsy, etc.)."""
+
     @property
     @abstractmethod
     def platform_id(self) -> str:
-        """Returns the unique identifier for the platform (e.g., 'ebay', 'etsy')."""
+        """Unique slug identifying the platform (e.g. 'ebay', 'etsy')."""
         pass
 
-    @abstractmethod
-    def authenticate(self, *args, **kwargs) -> Dict[str, Any]:
-        """
-        Handles OAuth or API key authentication and returns updated tokens/settings.
-        """
-        pass
+
+class AIService(ABC):
+    """
+    Abstract base class for an AI service that can generate item descriptions from images.
+    """
 
     @abstractmethod
-    def publish_listing(self, lot_number: int, item_data: Dict[str, Any]) -> str:
+    def generate_options(
+        self,
+        image_paths: List[Path | str],
+        seller_notes: str = "",
+        strategy: str = "auction",
+    ) -> Dict[str, List[Dict[str, Any]]]:
         """
-        Publishes a listing to the platform and returns the remote listing ID.
-        """
-        pass
+        Generates item description options from a list of images.
 
-    @abstractmethod
-    def update_listing(self, lot_number: int, remote_id: str, item_data: Dict[str, Any]) -> bool:
-        """
-        Updates an existing listing on the platform. Returns True on success.
-        """
-        pass
-
-    @abstractmethod
-    def delete_listing(self, lot_number: int, remote_id: str) -> bool:
-        """
-        Deletes or ends a listing on the platform. Returns True on success.
+        :param image_paths: A list of paths to the images.
+        :param seller_notes: Optional notes from the seller.
+        :param strategy: The strategy to use for generation (e.g., 'auction', 'retail').
+        :return: A dictionary containing a list of generated options.
         """
         pass
 
-    @abstractmethod
-    def handle_webhook(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    @property
+    def name(self) -> str:
         """
-        Parses an incoming webhook payload and returns a normalized dictionary 
-        containing event details (e.g., 'event_type': 'sale', 'remote_id': '12345').
+        Returns the name of the AI service (e.g., 'OpenAI', 'Claude', 'Gemini').
         """
-        pass
+        return self.__class__.__name__.replace("Client", "")

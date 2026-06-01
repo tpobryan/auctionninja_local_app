@@ -10,7 +10,7 @@ from werkzeug.utils import secure_filename
 
 from ..integrations.image_processor import apply_auto_enhance
 
-from ..inventory_manager_generator import InventoryManagerGenerator
+from ..services.ai_service_factory import get_ai_services
 from ..integrations.ftp_client import upload_lot_photos_to_inventory_manager
 from ..integrations.publisher import process_platform_publishing, PLATFORMS
 from ..database import (
@@ -55,7 +55,7 @@ from ..utils import (
 from ..database import fetch_active_draft as db_fetch_active_draft
 
 main_bp = Blueprint("main", __name__)
-generator = InventoryManagerGenerator()
+
 
 def render_edit_page(
     temp_id: str,
@@ -142,14 +142,32 @@ def analyze():
         return redirect(url_for("main.index"))
 
     try:
-        ai_data = generator.generate_options(saved_files, seller_notes=seller_notes, strategy=strategy)
-        options = ai_data.get("options", [])
-        if not options:
-            raise ValueError("No listing options were returned.")
-        selected = options[0]
+        ai_services = get_ai_services()
+        if not ai_services:
+            flash("No AI services are configured. Please set at least one AI API key in the .env file.")
+            return redirect(url_for("main.index"))
+
+        all_options = []
+        for service in ai_services:
+            try:
+                ai_data = service.generate_options(saved_files, seller_notes=seller_notes, strategy=strategy)
+                options = ai_data.get("options", [])
+                for option in options:
+                    option["provider"] = service.name
+                all_options.extend(options)
+            except Exception as exc:
+                current_app.logger.exception(f"AI analysis failed for {service.name}")
+                flash(f"AI analysis failed for {service.name}: {exc}")
+
+        if not all_options:
+            raise ValueError("No listing options were returned from any AI service.")
+
+        # For now, just pick the first option from the first successful service
+        selected = all_options[0]
         current_app.logger.info("AI Selected Option Strategy=%s: %s", strategy, json.dumps(selected, indent=2))
         form = form_from_option(selected, seller_notes=seller_notes, strategy=strategy)
-        current_app.logger.info("Generated %s options", len(options))
+        current_app.logger.info("Generated %s options", len(all_options))
+
     except Exception as exc:
         current_app.logger.exception("AI analysis failed")
         flash(f"AI analysis failed: {exc}")
@@ -166,7 +184,7 @@ def analyze():
         temp_id=temp_id,
         saved_files=saved_files,
         seller_notes=seller_notes,
-        options=options,
+        options=all_options,
         form=form,
     )
 
@@ -182,22 +200,35 @@ def retry_analyze():
         return redirect(url_for("main.index"))
 
     try:
-        ai_data = generator.generate_options(
-            saved_files, 
-            seller_notes=seller_notes,
-            strategy=strategy
-        )
-        options = ai_data.get("options", [])
-        
+        ai_services = get_ai_services()
+        if not ai_services:
+            flash("No AI services are configured. Please set at least one AI API key in the .env file.")
+            return redirect(url_for("main.index"))
+
+        all_options = []
+        for service in ai_services:
+            try:
+                ai_data = service.generate_options(saved_files, seller_notes=seller_notes, strategy=strategy)
+                options = ai_data.get("options", [])
+                for option in options:
+                    option["provider"] = service.name
+                all_options.extend(options)
+            except Exception as exc:
+                current_app.logger.exception(f"AI analysis failed for {service.name}")
+                flash(f"AI analysis failed for {service.name}: {exc}")
+
+        if not all_options:
+            raise ValueError("No listing options were returned from any AI service.")
+
         # Default to first option
         form = {}
-        if options:
-            form = form_from_option(options[0], seller_notes=seller_notes)
+        if all_options:
+            form = form_from_option(all_options[0], seller_notes=seller_notes)
         
         set_active_draft(
             temp_id=temp_id,
             seller_notes=seller_notes,
-            options=options,
+            options=all_options,
             form=form,
         )
     except Exception as exc:
@@ -219,10 +250,11 @@ def choose_option():
 
     options = options_from_request()
     chosen_rank = request.form.get("chosen_rank", "").strip()
+    chosen_provider = request.form.get("chosen_provider", "").strip()
 
     selected_option = None
     for option in options:
-        if str(option.get("rank")) == chosen_rank:
+        if str(option.get("rank")) == chosen_rank and option.get("provider") == chosen_provider:
             selected_option = option
             break
 
@@ -394,21 +426,33 @@ def revise():
     }
 
     try:
-        revised = generator.revise_option(
-            saved_files,
-            current_option=current_option,
-            seller_notes=seller_notes,
-            revision_request=revision_request,
-        )
-        form["Identification"] = str(revised.get("identification", form["Identification"])).strip()
-        form["Confidence Note"] = str(revised.get("confidence_note", form["Confidence Note"])).strip()
-        form["Material Notes"] = str(revised.get("material_notes", form["Material Notes"])).strip()
-        form["Mark Notes"] = str(revised.get("mark_notes", form["Mark Notes"])).strip()
-        form["Title"] = str(revised.get("title", form["Title"])).strip()
-        form["Description"] = str(revised.get("description", form["Description"])).strip()
-        form["Condition Summary"] = str(revised.get("condition_summary", form["Condition Summary"])).strip()
-        form["Keywords"] = str(revised.get("keywords", form["Keywords"])).strip()
-        form["Category"] = str(revised.get("category", form["Category"])).strip() or "Other"
+        # TODO: Use the same AI that generated the original option
+        ai_services = get_ai_services()
+        if not ai_services:
+            flash("No AI services are configured.")
+            return redirect(url_for("main.index"))
+
+        # revise_option is currently only implemented by OpenAIClient
+        generator = next((s for s in ai_services if hasattr(s, "revise_option")), None)
+        if generator is not None:
+            revised = generator.revise_option(
+                saved_files,
+                current_option=current_option,
+                seller_notes=seller_notes,
+                revision_request=revision_request,
+            )
+            form["Identification"] = str(revised.get("identification", form["Identification"])).strip()
+            form["Confidence Note"] = str(revised.get("confidence_note", form["Confidence Note"])).strip()
+            form["Material Notes"] = str(revised.get("material_notes", form["Material Notes"])).strip()
+            form["Mark Notes"] = str(revised.get("mark_notes", form["Mark Notes"])).strip()
+            form["Title"] = str(revised.get("title", form["Title"])).strip()
+            form["Description"] = str(revised.get("description", form["Description"])).strip()
+            form["Condition Summary"] = str(revised.get("condition_summary", form["Condition Summary"])).strip()
+            form["Keywords"] = str(revised.get("keywords", form["Keywords"])).strip()
+            form["Category"] = str(revised.get("category", form["Category"])).strip() or "Other"
+        else:
+            flash("No configured AI service supports revision.")
+
     except Exception as exc:
         current_app.logger.exception("AI revision failed")
         flash(f"AI revision failed: {exc}")

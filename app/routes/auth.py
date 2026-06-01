@@ -1,3 +1,4 @@
+import secrets
 from flask import Blueprint, render_template, request, flash, redirect, url_for, session
 from ..utils import auth_enabled, auth_username, auth_password, is_authenticated, is_safe_local_url
 from ..extensions import limiter
@@ -33,7 +34,7 @@ def login():
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "")
         next_url = request.form.get("next", "").strip()
-        if username == auth_username() and password == auth_password():
+        if secrets.compare_digest(username, auth_username()) and secrets.compare_digest(password, auth_password()):
             session["authenticated"] = True
             flash("Signed in.")
             return redirect(next_url if is_safe_local_url(next_url) else url_for("main.index"))

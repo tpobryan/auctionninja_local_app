@@ -29,6 +29,15 @@ from .database import (
 UPLOADS_DIR = DATA_DIR / "uploads"
 UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 
+
+def _safe_json_loads(value: str, default=None):
+    if default is None:
+        default = {}
+    try:
+        return json.loads(value)
+    except (json.JSONDecodeError, TypeError):
+        return default
+
 CSV_HEADER = [
     "Lot Number",
     "Lead",
@@ -251,24 +260,37 @@ def blank_form(seller_notes: str = "") -> dict[str, str]:
 
 def options_from_request() -> list[dict]:
     options = []
-    for i in range(1, 4):
-        options.append(
-            {
-                "rank": i,
-                "identification": request.form.get(f"option_{i}_identification", "").strip(),
-                "confidence_note": request.form.get(f"option_{i}_confidence_note", "").strip(),
-                "material_notes": request.form.get(f"option_{i}_material_notes", "").strip(),
-                "mark_notes": request.form.get(f"option_{i}_mark_notes", "").strip(),
-                "title": request.form.get(f"option_{i}_title", "").strip(),
-                "description": request.form.get(f"option_{i}_description", "").strip(),
-                "category": request.form.get(f"option_{i}_category", "").strip() or "Other",
-                "condition_summary": request.form.get(f"option_{i}_condition_summary", "").strip(),
-                "low_estimate": request.form.get(f"option_{i}_low_estimate", "").strip(),
-                "high_estimate": request.form.get(f"option_{i}_high_estimate", "").strip(),
-                "keywords": request.form.get(f"option_{i}_keywords", "").strip(),
-                "platform_data": json.loads(request.form.get(f"option_{i}_platform_data", "{}")),
-            }
-        )
+    # This is a bit of a hack to get the providers from the form.
+    # A better way would be to pass the providers as a list.
+    providers = set()
+    for key in request.form:
+        if key.startswith("option_"):
+            parts = key.split("_")
+            if len(parts) > 2:
+                providers.add(parts[1])
+
+    for provider in providers:
+        for i in range(1, 4):
+            prefix = f"option_{provider}_{i}_"
+            if f"{prefix}title" in request.form:
+                options.append(
+                    {
+                        "rank": i,
+                        "provider": provider,
+                        "identification": request.form.get(f"{prefix}identification", "").strip(),
+                        "confidence_note": request.form.get(f"{prefix}confidence_note", "").strip(),
+                        "material_notes": request.form.get(f"{prefix}material_notes", "").strip(),
+                        "mark_notes": request.form.get(f"{prefix}mark_notes", "").strip(),
+                        "title": request.form.get(f"{prefix}title", "").strip(),
+                        "description": request.form.get(f"{prefix}description", "").strip(),
+                        "category": request.form.get(f"{prefix}category", "").strip() or "Other",
+                        "condition_summary": request.form.get(f"{prefix}condition_summary", "").strip(),
+                        "low_estimate": request.form.get(f"{prefix}low_estimate", "").strip(),
+                        "high_estimate": request.form.get(f"{prefix}high_estimate", "").strip(),
+                        "keywords": request.form.get(f"{prefix}keywords", "").strip(),
+                        "platform_data": _safe_json_loads(request.form.get(f"{prefix}platform_data", "{}")),
+                    }
+                )
     return options
 
 def form_from_request(seller_notes: str = "") -> dict[str, str]:

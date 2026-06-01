@@ -33,6 +33,8 @@ class Settings(BaseSettings):
     # AI settings
     OPENAI_API_KEY: str = "dummy-key-if-missing"
     OPENAI_MODEL: str = "gpt-4o"
+    CLAUDE_API_KEY: str = "dummy-key-if-missing"
+    GEMINI_API_KEY: str = "dummy-key-if-missing"
 
     # Etsy settings
     ETSY_KEY_STRING: str = ""
@@ -59,6 +61,14 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore"
     )
+
+    def model_post_init(self, __context):
+        if self.SECRET_KEY == "dev-secret-change-me":
+            import warnings
+            warnings.warn(
+                "SECRET_KEY is using the insecure default. Set SECRET_KEY in your .env file.",
+                stacklevel=2,
+            )
 
     @property
     def effective_database_url(self) -> str:
