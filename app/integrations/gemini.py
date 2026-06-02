@@ -21,7 +21,7 @@ from .openai import MASTER_INSTRUCTION, MARKETPLACE_INSTRUCTION
 class GeminiClient(AIService):
     def __init__(self, api_key: str | None = None, model: str | None = None) -> None:
         self.client = genai.Client(api_key=api_key or settings.GEMINI_API_KEY)
-        self.model_name = model or "gemini-2.0-flash"
+        self.model_name = model or "gemini-2.5-flash"
 
     def generate_options(
         self,
