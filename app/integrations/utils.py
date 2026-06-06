@@ -1,11 +1,36 @@
 from __future__ import annotations
 
 import base64
+import io
 import json
 import mimetypes
 import re
 from pathlib import Path
 from typing import Any, List
+
+from PIL import Image, ImageOps
+
+MAX_AI_IMAGE_DIMENSION = 1600
+AI_JPEG_QUALITY = 82
+
+
+def resize_for_ai(path: Path) -> bytes:
+    """
+    Open image, auto-rotate, resize so longest side <= MAX_AI_IMAGE_DIMENSION,
+    return optimized JPEG bytes. Always returns JPEG regardless of source format.
+    """
+    with Image.open(path) as img:
+        img = ImageOps.exif_transpose(img)
+        if img.mode not in ("RGB",):
+            img = img.convert("RGB")
+        w, h = img.size
+        longest = max(w, h)
+        if longest > MAX_AI_IMAGE_DIMENSION:
+            scale = MAX_AI_IMAGE_DIMENSION / float(longest)
+            img = img.resize((int(w * scale), int(h * scale)), Image.Resampling.LANCZOS)
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=AI_JPEG_QUALITY, optimize=True)
+        return buf.getvalue()
 
 
 def guess_mime_type(path: Path) -> str:
@@ -26,14 +51,13 @@ def build_image_content(image_paths: list[Path | str]) -> list[dict[str, Any]]:
     content: list[dict[str, Any]] = []
     for path_or_str in image_paths:
         path = Path(path_or_str) if isinstance(path_or_str, str) else path_or_str
-        mime = guess_mime_type(path)
-        with path.open("rb") as f:
-            b64 = base64.b64encode(f.read()).decode("utf-8")
+        img_bytes = resize_for_ai(path)
+        b64 = base64.b64encode(img_bytes).decode("utf-8")
         content.append(
             {
                 "type": "image_url",
                 "image_url": {
-                    "url": f"data:{mime};base64,{b64}"
+                    "url": f"data:image/jpeg;base64,{b64}"
                 },
             }
         )

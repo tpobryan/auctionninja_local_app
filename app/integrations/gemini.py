@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import base64
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -12,6 +11,7 @@ from .base import AIService
 from .utils import (
     parse_model_json,
     normalize_output,
+    resize_for_ai,
 )
 
 # TODO: The prompt is very OpenAI specific. We will need to generalize it.
@@ -60,16 +60,8 @@ Return only valid JSON.
         parts: list[Any] = [prompt]
         for path in image_paths:
             path = Path(path)
-            mime_type = "image/jpeg"
-            suffix = path.suffix.lower()
-            if suffix == ".png":
-                mime_type = "image/png"
-            elif suffix == ".webp":
-                mime_type = "image/webp"
-            elif suffix == ".gif":
-                mime_type = "image/gif"
-            image_bytes = path.read_bytes()
-            parts.append(types.Part.from_bytes(data=image_bytes, mime_type=mime_type))
+            image_bytes = resize_for_ai(path)
+            parts.append(types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg"))
 
         response = self.client.models.generate_content(
             model=self.model_name,
